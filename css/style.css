@@ -405,3 +405,17 @@ kbd {
 .cd-leg { width: 24px; font-size: 12px; color: var(--phosphor-dim); letter-spacing: 1px; }
 .cd-row .cd-box { width: 32px; height: 40px; font-size: 24px; }
 .cd-row .cd-box.mark { margin-left: 6px; margin-right: 0; }
+
+/* ---------- AUDIT CLOCK ---------- */
+.audit-timer { position: relative; height: 12px; margin-top: 8px; background: #1a120a; border-radius: 3px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8); }
+.audit-timer .fill { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(180deg, #ffd27a, var(--mustard)); }
+.audit-timer.low .fill { background: linear-gradient(180deg, #ff9a85, #e0331a); }
+.audit-timer span { position: absolute; right: 6px; top: -1px; font-family: var(--mono); font-size: 10px; color: #1a120a; font-weight: 700; }
+
+/* ---------- PRACTICE COACH ---------- */
+.coach { font-size: 12.5px; letter-spacing: 0.5px; line-height: 1.45; text-transform: none; }
+.coach b { color: var(--amber); }
+.audit-feedback.ok .coach b { color: #c8ffd8; }
+.audit-feedback.bad .coach b { color: var(--red); }
+.audit-feedback.bad .coach { color: #ffcfc4; }
+.practice-next { display: block; margin-top: 8px; margin-left: auto; }

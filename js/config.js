@@ -43,8 +43,18 @@ window.GETAWAY_CONFIG = {
   penalizeWallHits: true,
   penalizeBacktracking: true,
 
+  // ---- Audit clock ----
+  // Seconds to answer each audit. Running out counts as a strike. 0 = no clock.
+  auditTimeLimitSeconds: 6,
+
+  // ---- Practice ----
+  // Practice audits (with explanations, no strikes) before the official start.
+  // 0 = no practice. Facilitators can also skip it with index.html?skippractice
+  practiceAudits: 3,
+
   // ---- Stakes ----
-  // Wrong audit answers allowed. Reaching this many fails the mission.
+  // Strikes (wrong answers or running out of time) allowed per leg. Reaching this
+  // many restarts the current leg (new maze, its digits cleared); earlier legs are kept.
   maxStrikes: 3,
 
   // ---- Old Case Key ----
@@ -60,7 +70,7 @@ window.GETAWAY_CONFIG = {
   successMessage:
     "Route confirmed. The suspect doubled back to the precinct and stashed something before fleeing. Search the EVIDENCE DESK for your next lead.",
   failMessage:
-    "Three audit errors. Evidence Records has pulled your clearance and the suspect slipped away. Reset and try again.",
+    "Three strikes on this leg. Evidence Records has pulled the trace and this leg starts over on a new route. Earlier legs are kept.",
 
   sound: true
 };

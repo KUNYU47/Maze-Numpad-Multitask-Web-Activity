@@ -46,7 +46,7 @@
                 <div class="term-head">&gt; CASE FILE 475-GR // OPENED</div>
                 <h1 class="term-title">THE GETAWAY ROUTE</h1>
                 <p>Detective, the suspect slipped out through the old service tunnels. Our tracer has picked up their route. <b>Guide the blip to the exit</b> to follow it.</p>
-                <p>Evidence Records will <b>interrupt you without warning</b> with an <b>EVIDENCE-ID AUDIT</b>. The trace freezes until you answer. Each correct answer prints one digit into the <b>CODE REGISTER</b>. <b>Three wrong answers and the mission is scrubbed.</b></p>
+                <p>Evidence Records will <b>interrupt you without warning</b> with an <b>EVIDENCE-ID AUDIT</b>. The trace freezes until you answer. Each correct answer prints one digit into the <b>CODE REGISTER</b>. <b id="intro-stakes">Three strikes restart the leg.</b></p>
                 <p>Plan your route: <b>hitting a wall</b> or <b>doubling back</b> is a route error. Too many and the trail is lost and the maze <b>scrambles</b> (earned digits are kept).</p>
                 <p>The suspect switched routes once: there are <b><span id="intro-rounds">2</span> legs</b> to trace. At the end of each leg they left a <b>mark</b>. Decode the marks with the <b>OLD CASE KEY</b> to complete the case code.</p>
                 <div class="term-controls">
@@ -66,6 +66,7 @@
                   <span class="audit-strikes" id="audit-strikes"></span>
                   <span class="audit-num" id="audit-num">#01</span>
                 </div>
+                <div class="audit-timer hidden" id="audit-timer"><div class="fill" id="audit-timer-fill"></div><span id="audit-timer-text">6.0</span></div>
                 <div class="exhibits" id="exhibits"></div>
                 <div class="audit-rule">
                   <div class="rule-label">ENTER</div>
@@ -103,12 +104,23 @@
               </div>
             </div>
 
-            <!-- MISSION FAILED -->
+            <!-- LEG FAILED -->
             <div id="failed" class="overlay screen-overlay failed-overlay hidden">
               <div class="term closed-term">
-                <div class="stamp">MISSION SCRUBBED</div>
+                <div class="stamp" id="fail-stamp">LEG SCRUBBED</div>
                 <p id="fail-msg" class="success-msg"></p>
-                <button id="btn-retry" class="key big orange">RESTART MISSION</button>
+                <button id="btn-retry" class="key big orange">RESTART LEG</button>
+              </div>
+            </div>
+
+            <!-- PRACTICE COMPLETE -->
+            <div id="ready" class="overlay screen-overlay hidden">
+              <div class="term">
+                <div class="term-head">&gt; PRACTICE COMPLETE</div>
+                <h1 class="term-title">READY, DETECTIVE?</h1>
+                <p>From here on it counts. Audits interrupt the trace <b>at random</b>, every correct answer goes into the <b>CODE REGISTER</b>, and <b id="ready-stakes">wrong answers are strikes</b>.</p>
+                <p>Plan your route, watch the register, and keep an eye on the <b>OLD CASE KEY</b>.</p>
+                <button id="btn-begin-real" class="key big orange">BEGIN TRACE</button>
               </div>
             </div>
 

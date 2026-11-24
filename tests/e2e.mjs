@@ -13,7 +13,8 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const pageUrl = pathToFileURL(join(root, "index.html")).href + "?demo";
+const pageUrl = pathToFileURL(join(root, "index.html")).href + "?demo&skippractice";
+const practiceUrl = pathToFileURL(join(root, "index.html")).href + "?demo";
 const candidates = [
   process.env.BROWSER,
   "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
@@ -214,8 +215,12 @@ try {
   }
 
   if (want(2)) {
-  console.log("2. Wrong audit answers give strikes; three strikes fail the mission");
+  console.log("2. Three strikes restart only the current leg");
   await fresh();
+  check((await playLeg()) === "exit", "leg 1 completed");
+  const leg1 = await js(`window.__GR().earned[0].join("")`);
+  await press("Enter", "Enter", 13, "\r");
+  await sleep(300);
   for (let k = 1; k <= 3; k++) {
     check((await waitMode(["audit"])) === "audit", "audit appears");
     while (await js("window.__GR().auditLocked")) await sleep(80);
@@ -224,9 +229,17 @@ try {
     await enterDigit(wrong, methods[k % methods.length]);
     await sleep(150);
     check((await js("window.__GR().strikes")) === k, `strike ${k} recorded`);
-    check((await js("window.__GR().earned[0].length")) === 0, "no digit for a wrong answer");
+    check((await js("window.__GR().earned[1].length")) === 0, "no digit for a wrong answer");
   }
-  check((await waitMode(["failed"], 3000)) === "failed", "mission fails after 3 strikes");
+  check((await waitMode(["failed"], 3000)) === "failed", "3 strikes stop the leg");
+  const mazeBefore = await js(`JSON.stringify(window.__GR().maze.cells)`);
+  await press("Enter", "Enter", 13, "\r");
+  await sleep(300);
+  const after = await js(`(() => { const S = window.__GR(); return { mode: S.mode, round: S.round, strikes: S.strikes, leg1: S.earned[0].join(""), leg2: S.earned[1].length, mark1: S.revealed[0], maze: JSON.stringify(S.maze.cells), pos: S.pos, start: S.maze.start }; })()`);
+  check(after.mode === "maze" && after.round === 1, "restart stays on leg 2 (not the whole mission)");
+  check(after.leg1 === leg1 && after.mark1, "leg 1 digits and mark are kept");
+  check(after.leg2 === 0 && after.strikes === 0, "leg 2 register and strikes are cleared");
+  check(after.maze !== mazeBefore && after.pos.x === after.start.x && after.pos.y === after.start.y, "leg 2 gets a new maze from its start");
   }
 
   if (want(3)) {
@@ -291,6 +304,49 @@ try {
     await answerCorrectly();
     if ((await js("window.__GR().mode")) !== "maze") break;
   }
+  }
+
+  if (want(6)) {
+  console.log("6. Audit clock: running out of time is a strike");
+  await fresh();
+  check((await waitMode(["audit"])) === "audit", "audit appears");
+  const limit = await js("window.GETAWAY_CONFIG.auditTimeLimitSeconds");
+  const shownBar = await js(`!document.getElementById("audit-timer").classList.contains("hidden")`);
+  check(shownBar, "the countdown bar is visible");
+  await sleep(limit * 1000 - 1200);
+  check((await js("window.__GR().strikes")) === 0, "no strike before the time is up");
+  await sleep(1600);
+  check((await js("window.__GR().strikes")) === 1, "a strike when the time runs out");
+  check(/TIME'S UP/.test(await js(`document.getElementById("audit-feedback").textContent`)), "feedback says TIME'S UP");
+  }
+
+  if (want(7)) {
+  console.log("7. Practice: three explained audits, then the official start");
+  await send("Page.navigate", { url: practiceUrl });
+  await sleep(1200);
+  await js(`document.getElementById("btn-begin").click()`);
+  const n = await js("window.GETAWAY_CONFIG.practiceAudits");
+  for (let k = 0; k < n; k++) {
+    check((await js("window.__GR().mode")) === "practice", `practice audit ${k + 1} is shown`);
+    const s = await screen();
+    const ans = solveFromScreen(s.rule, s.digits);
+    const timed = await js(`!document.getElementById("audit-timer").classList.contains("hidden")`);
+    check(timed === (k === n - 1), `only the last practice audit is timed (audit ${k + 1}: ${timed})`);
+    // first one wrong (to see the explanation), the rest right
+    await enterDigit(k === 0 ? (ans + 1) % 10 : ans, "row");
+    await sleep(150);
+    const fb = await js(`document.getElementById("audit-feedback").textContent`);
+    check(k === 0 ? /NOT QUITE: the answer is \d/.test(fb) : /CORRECT/.test(fb), `practice feedback ${k + 1}: ${fb.slice(0, 60)}`);
+    check(/Exhibit [A-E]/.test(fb), "the explanation names the exhibit");
+    check((await js("window.__GR().strikes")) === 0, "practice gives no strikes");
+    await press("Enter", "Enter", 13, "\r");
+    await sleep(200);
+  }
+  check((await js("window.__GR().mode")) === "ready", "practice ends on the READY screen");
+  check((await js("window.__GR().startedAt")) === null, "the case timer has not started during practice");
+  await press("Enter", "Enter", 13, "\r");
+  await sleep(200);
+  check((await js("window.__GR().mode")) === "maze", "Enter begins the official trace");
   }
 
   check(pageErrors.length === 0, "no errors in the page (sound, input, drawing): " + pageErrors.slice(0, 3).join(" | "));

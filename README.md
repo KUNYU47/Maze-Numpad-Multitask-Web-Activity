@@ -18,11 +18,11 @@ You can also just double-click `index.html`.
 
 A full mission takes about 5 minutes.
 
-1. Read the case briefing and press **BEGIN TRACE** (or Enter).
+1. Read the case briefing and press **START PRACTICE** (or Enter). Three **practice audits** follow, each with a short briefing and an explanation of the right answer (which exhibit and why). Practice has no strikes; the last practice audit runs on the clock. Then press **BEGIN TRACE** to start for real (the case timer starts here).
 2. Move the amber blip with the **arrow keys** or **WASD** from `IN` to the `EXIT`. Every maze puts them at random spots on **opposite edges** (left and right, or top and bottom), with the exit among the edge cells farthest from the start. Each maze has **exactly two routes** to the exit, of similar length and sharing as little as possible, so spotting one route doesn't make it easy.
 3. Without warning, an **Evidence-ID Audit** pops up and the maze freezes. Five exhibit digits are shown with a rule, for example *the highest digit*, *the right-most odd digit*, or *the digit that appears twice*. Type the answer on the top-row digits or the numpad (NumLock on or off), or click the on-screen keypad.
    - **Correct:** the digit is printed into the **Code Register** and the maze unfreezes. Audits **keep coming until you reach the exit**. Once a leg's 4 slots are full, each new correct answer **overwrites the oldest slot** (A01, then A02, ...). A blinking orange bar marks the slot that will be overwritten next, and the audit says which slot it will replace. The code is whatever the register shows when you reach the exit.
-   - **Wrong:** a **strike**, then a new audit. **Three strikes scrub the mission** and it restarts with a new code.
+   - **Wrong, or out of time:** each audit has a **6-second clock** (draining bar). A wrong answer or running out of time is a **strike**, then a new audit. **Three strikes restart the current leg** (new maze, that leg's register row cleared, strikes back to 0). Earlier legs' digits and marks are kept, and the case timer keeps running. Strikes count per leg.
 4. **Route errors.** Hitting a wall (once per key press, holding a key doesn't count again) or doubling back along your route (once per retreat, however many steps) is a route error, shown on the **Route Errors** meter. At 10 errors the trail is lost: the maze for that leg **scrambles** into a new one and you restart from `IN`. Audit digits you've earned are kept.
 5. Audits are **evenly paced but unpredictable**: after each audit, the next one comes after a fresh random gap of 8 to 16 seconds of maze time. There is no slow start and no build-up, yet players can never tell exactly when the next one is coming.
 6. The exit stays **sealed (LOCK)** until the leg's 4 slots have been filled once. Standing at a sealed exit makes the remaining audits come much faster.
@@ -52,7 +52,9 @@ All settings live in **`js/config.js`**. Edit, save, and reload the browser.
 | `routeErrorLimit` | `10` | Route errors before the maze scrambles. `0` turns route penalties off. |
 | `penalizeWallHits` | `true` | Wall hits count as route errors. |
 | `penalizeBacktracking` | `true` | Doubling back counts as a route error. |
-| `maxStrikes` | `3` | Wrong audit answers allowed before the mission is scrubbed. |
+| `auditTimeLimitSeconds` | `6` | Seconds to answer each audit; running out is a strike. `0` = no clock. |
+| `practiceAudits` | `3` | Practice audits before the official start. `0` = none (or open `index.html?skippractice`). |
+| `maxStrikes` | `3` | Strikes (wrong or timed out) per leg before that leg restarts. |
 | `caseKey` | see file | Symbol to digit mapping (each digit 0 to 9 once). |
 | `shuffleCaseKey` | `true` | Shuffle the key every run. |
 | `successMessage` | evidence desk clue | Text on the Case Closed screen. |
@@ -63,6 +65,8 @@ All settings live in **`js/config.js`**. Edit, save, and reload the browser.
 
 **Rehearsal mode:** add `?demo` to the address (for example `index.html?demo`) for tiny mazes and audits every few seconds. A full run takes under a minute.
 
+**Skip practice** (for a group that has already practised): open `index.html?skippractice`.
+
 **Data:** the Case Closed screen shows total time, audits cleared, strikes, mean audit response time, code attempts, and route errors (wall hits, doublings back, scrambles). The same numbers (including every audit response time in ms and the code) are logged to the browser console (F12), which is handy for talking about switch costs in the debrief.
 
 ## How it links to the course (task switching)
@@ -71,7 +75,8 @@ All settings live in **`js/config.js`**. Edit, save, and reload the browser.
 - Audits arrive after **random gaps**, so players cannot predict the switch. This removes the benefit of anticipatory preparation and makes switch costs larger, while the even pacing keeps the switching load steady across the whole run.
 - Rules are **dealt from a deck**, so the active rule keeps changing and players can't settle into one rule.
 - Audits continue until the exit and **overwrite** older digits, so players must keep updating what they hold in working memory instead of filling the register once and forgetting it.
-- **Strikes** raise the stakes of each switch, so players must balance speed against accuracy.
+- **Strikes** and the **audit clock** raise the stakes of each switch, so players must balance speed against accuracy (a speed-accuracy trade-off).
+- The **practice round** makes sure the first real switch measures attention, not learning the controls.
 - **Five exhibits** instead of three raise the working-memory and visual-search load of each audit, which makes the switch more costly.
 - **Route errors** push players to plan the route ahead (goal maintenance) instead of trial and error, so an interruption mid-plan hurts more.
 - The audit **rule changes every time** (never the same rule twice in a row), so even within the audit task players must update which rule is active, adding a second layer of switching.
@@ -111,6 +116,7 @@ npm test
 
 ## Changelog
 
+- **v0.7** Three strikes now restart only the current leg (earlier legs kept; strikes count per leg). Each audit has a configurable clock (default 6 s); running out is a strike. Three practice audits with briefings and answer explanations before the official start (skippable). Case Closed stats show total strikes, timeouts and leg restarts.
 - **v0.6** Random start and exit on opposite edges of each maze. Each maze has exactly two solution routes of similar length that share as little as possible (the shorter route is never more than 10% shorter than the original). Final code entry shows one row per leg, so 3+ legs fit. Config now defaults to 3 legs, branching 0.6 and 10 route errors. Browser test sections can run on their own.
 - **v0.5** Audits keep coming until the exit. After a leg's register is full, each correct answer overwrites the oldest slot, so players must re-check the register; the next slot to be overwritten blinks, and the audit shows which slot (and its current digit) it replaces.
 - **v0.4.2** Audit popup sound: a tape STOP clunk with the motor winding down, then a warbling alert bell. New exhibits after a wrong answer get a short double chirp instead.

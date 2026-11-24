@@ -115,7 +115,28 @@
     return { make, deckLeft: () => deck.slice() };
   }
 
-  const api = { CRITERIA, create, make: create().make };
+  // Plain-language explanation of an audit's answer (used in the practice round).
+  function explain(a) {
+    const d = a.digits, ans = a.answer;
+    const ex = (i) => "Exhibit " + String.fromCharCode(65 + i);
+    const at = ex(d.indexOf(ans));
+    switch (a.criterion.id) {
+      case "highest": return "The biggest of " + d.join(" ") + " is " + ans + " (" + at + ").";
+      case "lowest": return "The smallest of " + d.join(" ") + " is " + ans + " (" + at + ").";
+      case "middle": return "Sorted by size: " + [...d].sort((p, q) => p - q).join(" ") + ". The one in the middle is " + ans + " (" + at + "), wherever it sits on screen.";
+      case "lme": return "Reading from Exhibit A to the right, the first even digit is " + ans + " (" + at + ").";
+      case "rme": return "Reading from the last exhibit to the left, the first even digit is " + ans + " (" + at + ").";
+      case "lmo": return "Reading from Exhibit A to the right, the first odd digit is " + ans + " (" + at + ").";
+      case "rmo": return "Reading from the last exhibit to the left, the first odd digit is " + ans + " (" + at + ").";
+      case "twice": {
+        const idx = d.map((x, i) => (x === ans ? i : -1)).filter((i) => i >= 0);
+        return ans + " appears in " + ex(idx[0]) + " and " + ex(idx[1]) + "; every other digit appears once.";
+      }
+    }
+    return "The answer is " + ans + ".";
+  }
+
+  const api = { CRITERIA, create, explain, make: create().make };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.GR_AUDIT = api;
 })(typeof window !== "undefined" ? window : globalThis);

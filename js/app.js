@@ -14,6 +14,9 @@
   const MAX_STRIKES = Math.max(1, CFG.maxStrikes | 0);
   const EXHIBITS = Math.max(3, (CFG.auditExhibits | 0) || 3);
   const ROUTE_LIMIT = Math.max(0, CFG.routeErrorLimit | 0);
+  const AUDIT_LIMIT = Math.max(0, +CFG.auditTimeLimitSeconds || 0); // seconds, 0 = untimed
+  const PRACTICE = /[?&]skippractice\b/.test(location.search) ? 0 : Math.max(0, CFG.practiceAudits | 0);
+  const practiceGen = window.GR_AUDIT.create(); // separate deck so practice doesn't use up the real one
 
   const $ = (id) => document.getElementById(id);
 
@@ -32,8 +35,16 @@
     roundEnd: $("round-end"), roundEndText: $("round-end-text"), codeEntry: $("code-entry"),
     codeDisplay: $("code-display"), finalPad: $("final-pad"), finalFeedback: $("final-feedback"),
     successMsg: $("success-msg"), failMsg: $("fail-msg"),
-    exhibits: $("exhibits"), routeMeter: $("route-meter"), routePanel: $("route-panel")
+    exhibits: $("exhibits"), routeMeter: $("route-meter"), routePanel: $("route-panel"),
+    ready: $("ready"), timer: $("audit-timer"), timerFill: $("audit-timer-fill"), timerText: $("audit-timer-text"),
+    auditTitle: $("audit-title"), failStamp: $("fail-stamp"), btnRetry: $("btn-retry")
   };
+  // Rules text that depends on settings
+  const stakes = (AUDIT_LIMIT ? "You have " + AUDIT_LIMIT + " seconds per audit. A wrong answer or running out of time is a strike. " : "A wrong answer is a strike. ") +
+    MAX_STRIKES + " strikes restart the current leg.";
+  $("intro-stakes").textContent = stakes;
+  $("ready-stakes").textContent = stakes;
+  $("btn-begin").textContent = PRACTICE ? "START PRACTICE" : "BEGIN TRACE";
   // Exhibit cards (A, B, C, ...)
   el.exhibits.style.gridTemplateColumns = "repeat(" + EXHIBITS + ", 1fr)";
   el.exhibits.classList.toggle("many", EXHIBITS > 3);
@@ -97,7 +108,9 @@
       strikes: 0,
       startedAt: null, endedAt: null,
       audit: null, auditShownAt: 0, auditLocked: false, auditCount: 0,
-      stats: { rts: [], attempts: 0, wallHits: 0, backtracks: 0, rescrambles: 0 },
+      stats: { rts: [], attempts: 0, wallHits: 0, backtracks: 0, rescrambles: 0, strikes: 0, timeouts: 0, legRestarts: 0 },
+      practice: { index: 0, audit: null, answered: false },
+      auditDeadline: null,
       route: window.GR_ROUTE.createTracker({
         limit: ROUTE_LIMIT, wallHits: CFG.penalizeWallHits !== false, backtracks: CFG.penalizeBacktracking !== false
       }),
@@ -133,7 +146,7 @@
 
   // ---------- RENDER HELPERS ----------
   function showOnly(name) {
-    ["intro", "audit", "exitpanel", "closed", "failed"].forEach((k) => el[k].classList.toggle("hidden", k !== name));
+    ["intro", "audit", "exitpanel", "closed", "failed", "ready"].forEach((k) => el[k].classList.toggle("hidden", k !== name));
     if (name && name !== "audit") el.toast.classList.add("hidden");
   }
 
@@ -246,7 +259,7 @@
   document.addEventListener("pointerdown", (e) => {
     const b = e.target.closest && e.target.closest(".key");
     if (!b || b.classList.contains("pad-key")) return;
-    if (["btn-begin", "btn-next-round", "btn-retry"].includes(b.id)) return; // these play the PLAY-key sound
+    if (["btn-begin-real", "btn-next-round", "btn-retry"].includes(b.id)) return; // these play the PLAY-key sound
     window.GR_SOUND.unlock();
     window.GR_SOUND.press();
   });
@@ -261,8 +274,10 @@
 
   // ---------- FLOW ----------
   function begin() {
+    if (S.mode !== "intro" && S.mode !== "ready") return;
     window.GR_SOUND.unlock();
     window.GR_SOUND.play();
+    S.auditDeadline = null;
     S.mode = "maze";
     S.startedAt = performance.now();
     showOnly(null);
@@ -301,20 +316,47 @@
     const slotName = "A" + String(i + 1).padStart(2, "0");
     el.auditNum.textContent = "L" + (S.round + 1) + " \u00b7 " + slotName;
     el.auditRuleLabel.textContent = overwriting ? "ENTER \u00b7 OVERWRITES " + slotName + " (NOW " + S.earned[S.round][i] + ")" : "ENTER";
-    S.audit.digits.forEach((d, k) => ($("ex-" + k).textContent = d));
-    el.auditRule.textContent = S.audit.criterion.text;
-    el.auditNote.textContent = S.audit.note ? "(" + S.audit.note + ")" : "";
-    el.auditFeedback.textContent = "AWAITING INPUT_";
-    el.auditFeedback.className = "audit-feedback";
+    el.auditTitle.textContent = "EVIDENCE-ID AUDIT";
+    showAuditCard(S.audit, !!AUDIT_LIMIT);
     el.freeze.classList.remove("hidden");
     el.status.textContent = "FROZEN";
+    setLamps();
+    if (retry) window.GR_SOUND.reissue();
+    else window.GR_SOUND.interrupt();
+  }
+
+  // Fill the audit device with an audit and (optionally) start its clock.
+  function showAuditCard(a, timed) {
+    a.digits.forEach((d, k) => ($("ex-" + k).textContent = d));
+    el.auditRule.textContent = a.criterion.text;
+    el.auditNote.textContent = a.note ? "(" + a.note + ")" : "";
+    el.auditFeedback.textContent = "AWAITING INPUT_";
+    el.auditFeedback.className = "audit-feedback";
+    S.auditShownAt = performance.now();
+    S.auditDeadline = timed && AUDIT_LIMIT ? S.auditShownAt + AUDIT_LIMIT * 1000 : null;
+    el.timer.classList.toggle("hidden", !S.auditDeadline);
+    updateClock(S.auditShownAt);
     showOnly("audit");
     el.audit.classList.remove("pop");
     void el.audit.offsetWidth;
     el.audit.classList.add("pop");
-    setLamps();
-    if (retry) window.GR_SOUND.reissue();
-    else window.GR_SOUND.interrupt();
+  }
+
+  function updateClock(now) {
+    if (!S.auditDeadline) return;
+    const left = Math.max(0, S.auditDeadline - now);
+    el.timerFill.style.width = (100 * left) / (AUDIT_LIMIT * 1000) + "%";
+    el.timerText.textContent = (left / 1000).toFixed(1);
+    el.timer.classList.toggle("low", left < 2000);
+  }
+
+  // Runs every tick: drains the audit clock and handles running out of time.
+  function clockTick(now) {
+    if (!S.auditDeadline || S.auditLocked) return;
+    updateClock(now);
+    if (now < S.auditDeadline) return;
+    if (S.mode === "audit") strike("timeout");
+    else if (S.mode === "practice") practiceAnswer(null);
   }
 
   function answerAudit(k) {
@@ -336,22 +378,30 @@
       renderRegister([S.round, slot]);
       setTimeout(closeAudit, 650);
     } else {
-      S.strikes++;
-      renderStrikes();
-      const device = el.audit.querySelector(".audit-device");
-      device.classList.add("shake");
-      window.GR_SOUND.wrong();
-      if (S.strikes >= MAX_STRIKES) {
-        el.auditFeedback.textContent = "STRIKE " + S.strikes + " · CLEARANCE REVOKED";
-        el.auditFeedback.className = "audit-feedback bad";
-        setTimeout(() => { device.classList.remove("shake"); failMission(); }, 1100);
-        return;
-      }
-      const left = MAX_STRIKES - S.strikes;
-      el.auditFeedback.textContent = "MISMATCH · STRIKE " + S.strikes + " · " + left + " LEFT";
-      el.auditFeedback.className = "audit-feedback bad";
-      setTimeout(() => { device.classList.remove("shake"); openAudit(true); }, 1100);
+      strike("wrong");
     }
+  }
+
+  // A wrong answer or running out of time. Enough strikes restart the current leg.
+  function strike(kind) {
+    S.auditLocked = true;
+    S.strikes++;
+    S.stats.strikes++;
+    if (kind === "timeout") S.stats.timeouts++;
+    renderStrikes();
+    const device = el.audit.querySelector(".audit-device");
+    device.classList.add("shake");
+    window.GR_SOUND.wrong();
+    const what = kind === "timeout" ? "TIME'S UP" : "MISMATCH";
+    el.auditFeedback.className = "audit-feedback bad";
+    if (S.strikes >= MAX_STRIKES) {
+      el.auditFeedback.textContent = what + " \u00b7 STRIKE " + S.strikes + " \u00b7 LEG SCRUBBED";
+      setTimeout(() => { device.classList.remove("shake"); failLeg(); }, 1100);
+      return;
+    }
+    const left = MAX_STRIKES - S.strikes;
+    el.auditFeedback.textContent = what + " \u00b7 STRIKE " + S.strikes + " \u00b7 " + left + " LEFT";
+    setTimeout(() => { device.classList.remove("shake"); if (S.mode === "audit") openAudit(true); }, 1100);
   }
 
   function closeAudit() {
@@ -369,16 +419,36 @@
     }
   }
 
-  function failMission() {
+  function failLeg() {
     S.mode = "failed";
-    S.endedAt = performance.now();
+    S.auditDeadline = null;
+    el.failStamp.textContent = "LEG " + (S.round + 1) + " SCRUBBED";
+    el.btnRetry.textContent = "RESTART LEG " + (S.round + 1);
     el.failMsg.textContent = CFG.failMessage || "";
     el.freeze.classList.add("hidden");
     showOnly("failed");
     el.status.textContent = "SCRUBBED";
     setLamps();
     window.GR_SOUND.sealed();
-    console.log("[GetawayRoute] mission failed", { timeMs: Math.round(S.endedAt - S.startedAt), auditRTsMs: S.stats.rts.map(Math.round) });
+  }
+
+  // Start the current leg over: new maze, its register row cleared, strikes reset.
+  // Earlier legs (their digits and marks) are kept. The case timer keeps running.
+  function restartLeg() {
+    if (S.mode !== "failed") return;
+    S.stats.legRestarts++;
+    S.earned[S.round] = [];
+    S.answered[S.round] = 0;
+    S.strikes = 0;
+    startRoundMaze();
+    S.mode = "maze";
+    showOnly(null);
+    renderRegister();
+    renderStrikes();
+    el.status.textContent = "TRACKING";
+    setLamps();
+    window.GR_SOUND.play();
+    toast("LEG " + (S.round + 1) + " RESTARTED \u00b7 NEW ROUTE", 2200);
   }
 
   const atExit = () => S.pos.x === S.maze.exit.x && S.pos.y === S.maze.exit.y;
@@ -477,6 +547,8 @@
   function nextRound() {
     if (S.mode !== "exit" || S.round >= ROUNDS - 1) return;
     S.round++;
+    S.strikes = 0; // strikes count per leg
+    renderStrikes();
     window.GR_SOUND.play();
     startRoundMaze();
     S.mode = "maze";
@@ -541,7 +613,7 @@
     const rts = S.stats.rts;
     $("st-time").textContent = fmtTime(S.endedAt - S.startedAt);
     $("st-audits").textContent = rts.length;
-    $("st-errors").textContent = S.strikes + " / " + MAX_STRIKES;
+    $("st-errors").textContent = S.stats.strikes + " (" + S.stats.timeouts + " timed out) \u00b7 " + S.stats.legRestarts + " leg restart" + (S.stats.legRestarts === 1 ? "" : "s");
     $("st-rt").textContent = rts.length ? (rts.reduce((a, b) => a + b, 0) / rts.length / 1000).toFixed(2) + " s" : "--";
     $("st-attempts").textContent = S.stats.attempts;
     $("st-route").textContent = S.stats.wallHits + " wall \u00b7 " + S.stats.backtracks + " back \u00b7 " + S.stats.rescrambles + " scrambles";
@@ -553,7 +625,7 @@
     window.GR_SOUND.win();
     console.log("[GetawayRoute] case closed", {
       timeMs: Math.round(S.endedAt - S.startedAt), code: S.code.join(""), auditRTsMs: rts.map(Math.round),
-      strikes: S.strikes, attempts: S.stats.attempts,
+      strikes: S.stats.strikes, timeouts: S.stats.timeouts, legRestarts: S.stats.legRestarts, attempts: S.stats.attempts,
       wallHits: S.stats.wallHits, backtracks: S.stats.backtracks, rescrambles: S.stats.rescrambles
     });
   }
@@ -589,20 +661,90 @@
       else if (e.key === "Backspace") { e.preventDefault(); pressFinal("DEL"); }
       else if (e.key === "Delete" || e.key === "Escape") { e.preventDefault(); pressFinal("CLR"); }
       else if (e.key === "Enter") { e.preventDefault(); pressFinal("ENT"); }
+    } else if (S.mode === "practice") {
+      if (!S.practice.answered && digit !== null) { e.preventDefault(); if (!e.repeat) practiceAnswer(digit); }
+      else if (S.practice.answered && e.key === "Enter") { e.preventDefault(); practiceNext(); }
     } else if (S.mode === "intro" && e.key === "Enter") {
+      e.preventDefault(); startBriefing();
+    } else if (S.mode === "ready" && e.key === "Enter") {
       e.preventDefault(); begin();
     } else if (S.mode === "failed" && e.key === "Enter") {
-      e.preventDefault(); restart();
+      e.preventDefault(); restartLeg();
     } else if (e.key.startsWith("Arrow") || e.key === " ") {
       e.preventDefault();
     }
   });
 
-  function restart() { newCase(); begin(); }
+  // ---------- PRACTICE ----------
+  const PRACTICE_TIPS = [
+    "Read the rule, find the matching digit among the exhibits, then type it (top row or numpad) or click the keypad. Practice has no strikes.",
+    "The rule changes every audit. \"Left-most\" reads from Exhibit A; \"middle value\" means by size, not position; 0 counts as even.",
+    "Now with the clock. In the real trace you get " + AUDIT_LIMIT + " seconds, and running out is a strike."
+  ];
 
-  $("btn-begin").addEventListener("click", begin);
+  function startBriefing() {
+    window.GR_SOUND.unlock();
+    if (!PRACTICE) return begin();
+    S.mode = "practice";
+    S.practice.index = 0;
+    el.status.textContent = "PRACTICE";
+    practiceShow();
+  }
+
+  function practiceShow() {
+    const i = S.practice.index;
+    const a = practiceGen.make(null, EXHIBITS);
+    S.practice.audit = a;
+    S.practice.answered = false;
+    S.auditLocked = false;
+    const timed = AUDIT_LIMIT > 0 && i === PRACTICE - 1; // the last practice audit has the clock
+    el.auditTitle.textContent = "PRACTICE AUDIT";
+    el.auditNum.textContent = (i + 1) + " / " + PRACTICE;
+    el.auditRuleLabel.textContent = "ENTER";
+    showAuditCard(a, timed);
+    const tip = PRACTICE_TIPS[Math.min(i, PRACTICE_TIPS.length - 1)];
+    el.auditFeedback.innerHTML = '<div class="coach"><b>BRIEFING ' + (i + 1) + "/" + PRACTICE + ".</b> " + tip + "</div>";
+    window.GR_SOUND.interrupt();
+  }
+
+  // digit = the player's answer, or null when the practice clock ran out.
+  function practiceAnswer(digit) {
+    if (S.mode !== "practice" || S.practice.answered) return;
+    const a = S.practice.audit;
+    if (digit !== null) flashKey(el.auditPad, digit);
+    S.practice.answered = true;
+    S.auditLocked = true;
+    const ok = digit !== null && Number(digit) === a.answer;
+    const head = ok ? "CORRECT." : digit === null ? "TIME'S UP. In the trace this is a strike." : "NOT QUITE: the answer is " + a.answer + ".";
+    if (ok) window.GR_SOUND.correct(); else window.GR_SOUND.wrong();
+    const last = S.practice.index >= PRACTICE - 1;
+    el.auditFeedback.className = "audit-feedback " + (ok ? "ok" : "bad");
+    el.auditFeedback.innerHTML = '<div class="coach"><b>' + head + "</b> " + window.GR_AUDIT.explain(a) +
+      '<button class="key small orange practice-next" id="btn-practice-next">' + (last ? "FINISH PRACTICE" : "NEXT") + " \u25b8</button></div>";
+  }
+
+  function practiceNext() {
+    if (S.mode !== "practice" || !S.practice.answered) return;
+    S.practice.index++;
+    if (S.practice.index < PRACTICE) return practiceShow();
+    S.mode = "ready";
+    S.auditDeadline = null;
+    showOnly("ready");
+    el.status.textContent = "STANDBY";
+  }
+
+  el.auditPad.addEventListener("click", (e) => {
+    const b = e.target.closest(".pad-key");
+    if (b && S.mode === "practice" && !S.practice.answered) practiceAnswer(b.dataset.key);
+  });
+  el.auditFeedback.addEventListener("click", (e) => {
+    if (e.target.closest("#btn-practice-next")) practiceNext();
+  });
+
+  $("btn-begin").addEventListener("click", startBriefing);
+  $("btn-begin-real").addEventListener("click", begin);
   $("btn-again").addEventListener("click", newCase);
-  $("btn-retry").addEventListener("click", restart);
+  $("btn-retry").addEventListener("click", restartLeg);
   $("btn-next-round").addEventListener("click", (e) => { e.currentTarget.blur(); nextRound(); });
   $("btn-reset").addEventListener("click", (e) => {
     e.currentTarget.blur();
@@ -628,6 +770,7 @@
     const dt = Math.min(1000, now - last);
     last = now;
     if (S.mode === "maze") auditTick(dt);
+    clockTick(now);
   }, 50);
 
   function frame(now) {

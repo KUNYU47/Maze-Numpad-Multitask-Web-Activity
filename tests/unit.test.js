@@ -267,3 +267,14 @@ test("with any target, a rule is only reused after the deck is refilled", () => 
     last = id;
   }
 });
+
+test("practice explanations name the right answer and exhibit for every rule", () => {
+  const gen = AUDIT.create(seeded(314));
+  for (let i = 0; i < 400; i++) {
+    const a = gen.make(null, 5);
+    const text = AUDIT.explain(a);
+    assert.ok(text.includes(String(a.answer)), `${a.criterion.id}: mentions ${a.answer}: ${text}`);
+    const letter = String.fromCharCode(65 + a.digits.indexOf(a.answer));
+    assert.ok(text.includes("Exhibit " + letter), `${a.criterion.id}: names Exhibit ${letter}: ${text}`);
+  }
+});
