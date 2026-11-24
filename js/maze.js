@@ -9,30 +9,49 @@ window.GR_MAZE = (function () {
     { bit: W, dx: -1, dy: 0, opp: E }
   ];
 
-  function generate(size) {
+  // Growing-tree generator. branching 0 = recursive backtracker (long corridors),
+  // higher = more junctions and dead ends.
+  function generate(w, h, branching) {
     const cells = [];
-    for (let y = 0; y < size; y++) {
+    for (let y = 0; y < h; y++) {
       cells.push([]);
-      for (let x = 0; x < size; x++) cells[y].push(N | E | S | W);
+      for (let x = 0; x < w; x++) cells[y].push(N | E | S | W);
     }
     const seen = cells.map((r) => r.map(() => false));
-    const stack = [[0, 0]];
+    const active = [[0, 0]];
     seen[0][0] = true;
-    while (stack.length) {
-      const [x, y] = stack[stack.length - 1];
+    while (active.length) {
+      const idx = Math.random() < branching ? Math.floor(Math.random() * active.length) : active.length - 1;
+      const [x, y] = active[idx];
       const options = DIRS.filter((d) => {
         const nx = x + d.dx, ny = y + d.dy;
-        return nx >= 0 && ny >= 0 && nx < size && ny < size && !seen[ny][nx];
+        return nx >= 0 && ny >= 0 && nx < w && ny < h && !seen[ny][nx];
       });
-      if (!options.length) { stack.pop(); continue; }
+      if (!options.length) { active.splice(idx, 1); continue; }
       const d = options[Math.floor(Math.random() * options.length)];
       const nx = x + d.dx, ny = y + d.dy;
       cells[y][x] &= ~d.bit;
       cells[ny][nx] &= ~d.opp;
       seen[ny][nx] = true;
-      stack.push([nx, ny]);
+      active.push([nx, ny]);
     }
-    return { size, cells, start: { x: 0, y: 0 }, exit: { x: size - 1, y: size - 1 } };
+    // Exit = the cell farthest (by path) from the start.
+    const dist = cells.map((r) => r.map(() => -1));
+    const q = [[0, 0]];
+    dist[0][0] = 0;
+    let far = { x: 0, y: 0, d: 0 };
+    while (q.length) {
+      const [x, y] = q.shift();
+      for (const d of DIRS) {
+        if (cells[y][x] & d.bit) continue;
+        const nx = x + d.dx, ny = y + d.dy;
+        if (dist[ny][nx] !== -1) continue;
+        dist[ny][nx] = dist[y][x] + 1;
+        if (dist[ny][nx] > far.d) far = { x: nx, y: ny, d: dist[ny][nx] };
+        q.push([nx, ny]);
+      }
+    }
+    return { w, h, cells, start: { x: 0, y: 0 }, exit: { x: far.x, y: far.y }, pathLength: far.d };
   }
 
   function canMove(maze, x, y, dx, dy) {
@@ -47,18 +66,20 @@ window.GR_MAZE = (function () {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, W_, H_);
     const pad = 14 * dpr;
-    const cs = Math.floor((Math.min(W_, H_) - pad * 2) / maze.size);
-    const ox = Math.floor((W_ - cs * maze.size) / 2);
-    const oy = Math.floor((H_ - cs * maze.size) / 2);
+    const cs = Math.floor(Math.min((W_ - pad * 2) / maze.w, (H_ - pad * 2) / maze.h));
+    const ox = Math.floor((W_ - cs * maze.w) / 2);
+    const oy = Math.floor((H_ - cs * maze.h) / 2);
     const frozen = state.frozen;
     const green = frozen ? "rgba(120,200,150,0.35)" : "#7dffa0";
 
     // faint grid
     ctx.strokeStyle = "rgba(125,255,160,0.06)";
     ctx.lineWidth = 1;
-    for (let i = 0; i <= maze.size; i++) {
-      ctx.beginPath(); ctx.moveTo(ox + i * cs, oy); ctx.lineTo(ox + i * cs, oy + cs * maze.size); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(ox, oy + i * cs); ctx.lineTo(ox + cs * maze.size, oy + i * cs); ctx.stroke();
+    for (let i = 0; i <= maze.w; i++) {
+      ctx.beginPath(); ctx.moveTo(ox + i * cs, oy); ctx.lineTo(ox + i * cs, oy + cs * maze.h); ctx.stroke();
+    }
+    for (let i = 0; i <= maze.h; i++) {
+      ctx.beginPath(); ctx.moveTo(ox, oy + i * cs); ctx.lineTo(ox + cs * maze.w, oy + i * cs); ctx.stroke();
     }
 
     // exit cell
@@ -68,7 +89,7 @@ window.GR_MAZE = (function () {
     ctx.fillStyle = sealed ? "rgba(255,70,50," + (0.18 + 0.2 * pulse) + ")" : "rgba(125,255,160," + (0.2 + 0.25 * pulse) + ")";
     ctx.fillRect(ex + 2, ey + 2, cs - 4, cs - 4);
     ctx.fillStyle = sealed ? "#ff6a50" : "#c8ffd8";
-    ctx.font = "bold " + Math.floor(cs * 0.36) + "px Consolas, monospace";
+    ctx.font = "bold " + Math.floor(cs * 0.3) + "px Consolas, monospace";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(sealed ? "LOCK" : "EXIT", ex + cs / 2, ey + cs / 2);
 
@@ -98,14 +119,14 @@ window.GR_MAZE = (function () {
     ctx.shadowColor = frozen ? "transparent" : "rgba(125,255,160,0.8)";
     ctx.shadowBlur = 8 * dpr;
     ctx.beginPath();
-    for (let y = 0; y < maze.size; y++) {
-      for (let x = 0; x < maze.size; x++) {
+    for (let y = 0; y < maze.h; y++) {
+      for (let x = 0; x < maze.w; x++) {
         const c = maze.cells[y][x];
         const x0 = ox + x * cs, y0 = oy + y * cs, x1 = x0 + cs, y1 = y0 + cs;
         if (c & N) { ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); }
         if (c & W) { ctx.moveTo(x0, y0); ctx.lineTo(x0, y1); }
-        if (y === maze.size - 1 && c & S) { ctx.moveTo(x0, y1); ctx.lineTo(x1, y1); }
-        if (x === maze.size - 1 && c & E) { ctx.moveTo(x1, y0); ctx.lineTo(x1, y1); }
+        if (y === maze.h - 1 && c & S) { ctx.moveTo(x0, y1); ctx.lineTo(x1, y1); }
+        if (x === maze.w - 1 && c & E) { ctx.moveTo(x1, y0); ctx.lineTo(x1, y1); }
       }
     }
     ctx.stroke();

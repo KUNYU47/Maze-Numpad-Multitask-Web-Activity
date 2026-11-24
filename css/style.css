@@ -257,14 +257,15 @@ kbd {
 .mark-label { font-size: 11px; letter-spacing: 3px; margin-bottom: 8px; }
 .exit-symbol { color: var(--amber); filter: drop-shadow(0 0 8px rgba(255, 180, 80, 0.8)); }
 .glyph.big { width: 170px; height: 170px; }
-.code-display { display: flex; gap: 8px; margin: 6px 0 14px; }
+.code-display { display: flex; gap: 5px; margin: 6px 0 14px; }
 .cd-box {
-  width: 46px; height: 58px; display: flex; align-items: center; justify-content: center;
-  border: 2px solid var(--phosphor-dim); font-size: 32px; color: var(--phosphor);
+  width: 34px; height: 48px; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--phosphor-dim); font-size: 26px; color: var(--phosphor);
 }
 .cd-box.cursor { border-color: var(--phosphor); animation: cursor 1s steps(2, start) infinite; }
 @keyframes cursor { 50% { border-color: var(--phosphor-dim); } }
-.cd-box:last-child { border-color: var(--amber); color: var(--amber); }
+.cd-box.mark { border-color: var(--amber); color: var(--amber); margin-right: 10px; }
+.cd-box.mark:last-child { margin-right: 0; }
 .final-feedback { margin-top: 12px; font-size: 13px; letter-spacing: 2px; min-height: 1.5em; }
 .final-feedback.bad { color: var(--red); text-shadow: 0 0 6px var(--red); }
 
@@ -298,10 +299,14 @@ kbd {
   background: #9fae8a; color: #1e2a16; border-radius: 6px; padding: 4px 0;
   box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45); text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.12);
 }
-.register { display: flex; gap: 6px; }
+.register { display: flex; flex-direction: column; gap: 6px; }
+.reg-row { display: flex; gap: 5px; align-items: center; opacity: 0.6; }
+.reg-row.current { opacity: 1; }
+.reg-leg { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--brown); width: 20px; }
 .reg-slot { flex: 1; text-align: center; }
 .reg-digit {
-  font-family: var(--mono); font-size: 34px; height: 52px; line-height: 52px;
+  font-family: var(--mono); font-size: 28px; height: 42px; line-height: 42px;
+  display: flex; align-items: center; justify-content: center;
   background: var(--crt-bg); color: var(--phosphor-dim); border-radius: 5px;
   box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.9);
 }
@@ -309,7 +314,9 @@ kbd {
 .reg-slot.printed .reg-digit { animation: printed 0.8s; }
 @keyframes printed { 0% { background: #3b8a52; } 100% { background: var(--crt-bg); } }
 .reg-slot.mark .reg-digit { color: var(--amber); opacity: 0.8; }
-.reg-cap { font-size: 9px; letter-spacing: 2px; margin-top: 3px; color: var(--brown); font-weight: 700; }
+.reg-slot.mark { margin-left: 4px; }
+.reg-slot.mark .glyph { width: 28px; height: 28px; filter: drop-shadow(0 0 4px rgba(255, 180, 80, 0.8)); }
+.reg-slot.mark.filled .reg-digit { opacity: 1; }
 .casekey-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .casekey {
   flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start;
@@ -339,3 +346,23 @@ kbd {
   .deck { grid-template-columns: 1fr 270px; }
   .brand-sub { display: none; }
 }
+
+/* ---------- ROUNDS / STRIKES ---------- */
+.timer-panel { display: grid; grid-template-columns: 1.6fr 1fr 1.1fr; gap: 8px; align-items: end; }
+.timer-panel .lcd { font-size: 28px; letter-spacing: 3px; }
+.lcd.small { font-size: 28px; letter-spacing: 2px; }
+.strikes { display: flex; gap: 4px; height: 44px; align-items: center; }
+.strike {
+  flex: 1; height: 30px; display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-weight: 700; font-size: 20px; border-radius: 4px;
+  background: #3b302a; color: #5d4c40; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+.strike.hit { background: radial-gradient(circle at 40% 35%, #ffb3a3, #e0331a 70%); color: #fff; box-shadow: 0 0 10px #ff3b1f; }
+.audit-strikes { margin-left: auto; display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--plastic-lo); }
+.audit-strikes .strike { width: 20px; height: 18px; font-size: 13px; flex: none; }
+.audit-strikes + .audit-num { margin-left: 12px; }
+.round-end p { margin-bottom: 14px; }
+.round-end .key { margin-top: 8px; }
+.failed-overlay { background: rgba(30, 2, 0, 0.88); }
+.failed-overlay .term { color: #ffb3a3; text-shadow: 0 0 6px rgba(255, 90, 64, 0.5); }
+.failed-overlay .stamp { font-size: clamp(28px, 3.6vw, 48px); white-space: nowrap; letter-spacing: 5px; }

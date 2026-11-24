@@ -46,8 +46,8 @@
                 <div class="term-head">&gt; CASE FILE 475-GR // OPENED</div>
                 <h1 class="term-title">THE GETAWAY ROUTE</h1>
                 <p>Detective, the suspect slipped out through the old service tunnels. Our tracer has picked up their route. <b>Guide the blip to the exit</b> to follow it.</p>
-                <p>Evidence Records will <b>interrupt you without warning</b> with an <b>EVIDENCE-ID AUDIT</b>. The trace freezes until you answer. Each correct answer prints one digit into the <b>CODE REGISTER</b>.</p>
-                <p>At the exit the suspect left a <b>mark</b>. Decode it with the <b>OLD CASE KEY</b> and enter the full case code.</p>
+                <p>Evidence Records will <b>interrupt you without warning</b> with an <b>EVIDENCE-ID AUDIT</b>. The trace freezes until you answer. Each correct answer prints one digit into the <b>CODE REGISTER</b>. <b>Three wrong answers and the mission is scrubbed.</b></p>
+                <p>The suspect switched routes once: there are <b><span id="intro-rounds">2</span> legs</b> to trace. At the end of each leg they left a <b>mark</b>. Decode the marks with the <b>OLD CASE KEY</b> to complete the case code.</p>
                 <div class="term-controls">
                   <span><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
                   <span><kbd>0</kbd>&ndash;<kbd>9</kbd> or click the keypad to answer</span>
@@ -62,6 +62,7 @@
                 <div class="audit-head">
                   <span class="lamp red blink"></span>
                   <span id="audit-title">EVIDENCE-ID AUDIT</span>
+                  <span class="audit-strikes" id="audit-strikes"></span>
                   <span class="audit-num" id="audit-num">#01</span>
                 </div>
                 <div class="exhibits">
@@ -81,22 +82,36 @@
               </div>
             </div>
 
-            <!-- EXIT / FINAL CODE -->
+            <!-- EXIT / ROUND END / FINAL CODE -->
             <div id="exitpanel" class="overlay screen-overlay hidden">
               <div class="term exit-term">
-                <div class="term-head">&gt; SUSPECT EXIT LOCATED</div>
+                <div class="term-head" id="exit-head">&gt; SUSPECT EXIT LOCATED</div>
                 <div class="exit-grid">
                   <div class="mark-box">
-                    <div class="mark-label">MARK LEFT AT SCENE</div>
+                    <div class="mark-label" id="mark-label">MARK LEFT AT SCENE</div>
                     <div id="exit-symbol" class="exit-symbol"></div>
                   </div>
-                  <div class="code-entry">
-                    <p>Decode the mark with the <b>OLD CASE KEY</b>. Enter the <b>register digits in order</b>, then the <b>decoded mark</b>.</p>
+                  <div id="round-end" class="round-end">
+                    <p>The mark has been logged in the <b>CODE REGISTER</b>. Don't decode it yet&hellip; you'll need every mark at the end.</p>
+                    <p id="round-end-text">The trail continues. A new route is coming in.</p>
+                    <button id="btn-next-round" class="key big orange">TRACE NEXT LEG</button>
+                  </div>
+                  <div id="code-entry" class="code-entry hidden">
+                    <p>Enter the full case code exactly as the <b>CODE REGISTER</b> reads, left to right, top to bottom. Replace each <b>mark</b> with its number from the <b>OLD CASE KEY</b>.</p>
                     <div id="code-display" class="code-display"></div>
                     <div class="numpad wide" id="final-pad"></div>
                     <div id="final-feedback" class="final-feedback">&nbsp;</div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- MISSION FAILED -->
+            <div id="failed" class="overlay screen-overlay failed-overlay hidden">
+              <div class="term closed-term">
+                <div class="stamp">MISSION SCRUBBED</div>
+                <p id="fail-msg" class="success-msg"></p>
+                <button id="btn-retry" class="key big orange">RESTART MISSION</button>
               </div>
             </div>
 
@@ -108,7 +123,7 @@
                 <table class="stats">
                   <tr><td>CASE TIME</td><td id="st-time">--</td></tr>
                   <tr><td>AUDITS CLEARED</td><td id="st-audits">--</td></tr>
-                  <tr><td>AUDIT ERRORS</td><td id="st-errors">--</td></tr>
+                  <tr><td>STRIKES</td><td id="st-errors">--</td></tr>
                   <tr><td>MEAN AUDIT RESPONSE</td><td id="st-rt">--</td></tr>
                   <tr><td>CODE ATTEMPTS</td><td id="st-attempts">--</td></tr>
                 </table>
@@ -124,9 +139,19 @@
       </section>
 
       <aside class="side">
-        <div class="panel">
-          <div class="panel-label">CASE TIMER</div>
-          <div class="lcd" id="timer">00:00</div>
+        <div class="panel timer-panel">
+          <div>
+            <div class="panel-label">CASE TIMER</div>
+            <div class="lcd" id="timer">00:00</div>
+          </div>
+          <div>
+            <div class="panel-label">LEG</div>
+            <div class="lcd small" id="round-lcd">1/2</div>
+          </div>
+          <div class="strikes-box">
+            <div class="panel-label">STRIKES</div>
+            <div class="strikes" id="strikes"></div>
+          </div>
         </div>
 
         <div class="panel">
