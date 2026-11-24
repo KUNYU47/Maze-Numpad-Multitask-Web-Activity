@@ -1,2 +1,6 @@
 # Course handout (kept local, not published)
 *.pdf
+
+# Build output
+node_modules/
+dist/

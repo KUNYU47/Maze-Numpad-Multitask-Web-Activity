@@ -4,13 +4,16 @@ A PSY475 escape-room puzzle built on the **task-switching paradigm**. Players tr
 
 Styled in **Cassette Futurism**: beige plastic housings, a green-phosphor CRT, chunky keys, indicator lamps, and amber readouts, with a detective/case-file theme.
 
-## Running it (Windows)
+## Download and run
 
-Nothing to install. Double-click **`Start Getaway Route.bat`**. It opens `index.html` in your default browser (Chrome or Edge recommended). Press **F11** for full screen.
+Get the latest build from the [Releases page](https://github.com/KUNYU47/Maze-Numpad-Multitask-Web-Activity/releases/latest). Each is a single app with nothing to install.
 
-You can also just double-click `index.html`.
+- **Windows 10/11:** download `Getaway-Route-<version>-Windows.exe` and double-click it. The app isn't code-signed, so if SmartScreen says "Windows protected your PC", click **More info**, then **Run anyway**.
+- **macOS 11+ (Intel and Apple silicon):** download `Getaway-Route-<version>-macOS.dmg`, open it, and drag **The Getaway Route** to Applications. The app isn't notarized by Apple, so the first time **right-click the app, choose Open, then Open again**. If macOS says the app is damaged, run `xattr -cr "/Applications/The Getaway Route.app"` in Terminal once.
 
-> macOS support is planned for a later version. The app is plain HTML/CSS/JavaScript, so it should already open in a Mac browser, but only Windows has been tested so far.
+Press **F11** in the app for full screen.
+
+**Without the app:** the game is plain HTML/CSS/JavaScript. Double-click `index.html` (or `Start Getaway Route.bat` on Windows) to play it in a browser.
 
 ![Audit popup interrupting the maze](docs/audit.png)
 
@@ -37,7 +40,9 @@ Rules are dealt like a **deck of cards**: each of the 8 rules is used once befor
 
 ## Facilitator guide
 
-All settings live in **`js/config.js`**. Edit, save, and reload the browser.
+**In the app:** click the **gear** button (bottom right, next to SOUND) and enter the facilitator access code (ask the puzzle's author; it isn't written here because this repository is public). Every setting below can be changed there. **SAVE & START NEW CASE** stores the settings on that computer and starts a fresh case; **RESET TO DEFAULTS** goes back to `js/config.js`. The game pauses while the panel is open. The code only keeps players out of the panel; it is not real security.
+
+**In the files:** the defaults live in **`js/config.js`**. Edit, save, and reload.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
@@ -95,7 +100,11 @@ js/audit.js              Audit question generator
 js/route.js              Route-error tracker (wall hits, doubling back)
 js/symbols.js            SVG glyphs for the Old Case Key
 js/sound.js              Synthesized sound effects (Web Audio)
-Start Getaway Route.bat  Windows launcher
+js/settings.js           Facilitator setup panel (gear button, saved per computer)
+electron/main.js         Desktop app window (for the Windows/macOS builds)
+build/icon.png           App icon
+.github/workflows/       Builds the Windows .exe and macOS .dmg and publishes releases
+Start Getaway Route.bat  Windows launcher (browser version)
 Run Tests.bat            Runs all tests (Windows)
 tests/unit.test.js       Unit tests: audit rules, generator, maze, route errors
 tests/e2e.mjs            End-to-end test in headless Edge/Chrome with real key presses
@@ -112,9 +121,17 @@ npm test
 ```
 
 - **Unit tests** check every audit rule against an independently written answer key for **every** possible 3-digit and 5-digit combination, check that generated audits always have the intended answer, that start and exit sit on opposite edges and every maze has exactly two routes of similar length, the rule deck (each rule once per cycle, never twice in a row), and the route-error rules.
-- **End-to-end test** opens the real page in a hidden browser and plays it with real key presses. It reads the exhibits and rule off the screen, solves them independently, and answers using the top-row digits, the numpad with NumLock on, the numpad with NumLock off, and mouse clicks. It also checks strikes, mission failure, the final code, wall hits, doubling back, and the maze scramble, then runs 64 more audits as a stress test, checking that rules are dealt in full cycles and that popup gaps stay in range.
+- **End-to-end test** (sections 1 to 8; the setup-panel section 8 runs only when the `GR_SETUP_CODE` environment variable holds the access code) opens the real page in a hidden browser and plays it with real key presses. It reads the exhibits and rule off the screen, solves them independently, and answers using the top-row digits, the numpad with NumLock on, the numpad with NumLock off, and mouse clicks. It also checks strikes, mission failure, the final code, wall hits, doubling back, and the maze scramble, then runs 64 more audits as a stress test, checking that rules are dealt in full cycles and that popup gaps stay in range.
+
+## Building the apps
+
+The release builds come from GitHub Actions (`.github/workflows/release.yml`): pushing a tag such as `v1.0.0` builds the Windows `.exe` on Windows and the macOS `.dmg` (universal: Intel and Apple silicon) on macOS, runs the unit tests, and publishes both on the Releases page.
+
+To build locally (needs Node.js): `npm install`, then `npm run dist:win` (on Windows) or `npm run dist:mac` (on a Mac). Output goes to `dist/`. `npm start` runs the app without building.
 
 ## Changelog
+
+- **v1.0.0** First release: single-file Windows app and macOS app (no install needed), built and published by GitHub Actions. Facilitator setup panel behind the gear button (access code) with every setting, saved per computer; the game pauses while it's open. Full test run: 20 unit tests and 404 browser checks pass.
 
 - **v0.7** Three strikes now restart only the current leg (earlier legs kept; strikes count per leg). Each audit has a configurable clock (default 6 s); running out is a strike. Three practice audits with briefings and answer explanations before the official start (skippable). Case Closed stats show total strikes, timeouts and leg restarts.
 - **v0.6** Random start and exit on opposite edges of each maze. Each maze has exactly two solution routes of similar length that share as little as possible (the shorter route is never more than 10% shorter than the original). Final code entry shows one row per leg, so 3+ legs fit. Config now defaults to 3 legs, branching 0.6 and 10 route errors. Browser test sections can run on their own.

@@ -1,6 +1,8 @@
 /*
- * THE GETAWAY ROUTE — facilitator settings
- * Edit the values below, save, and reload the page.
+ * THE GETAWAY ROUTE — facilitator settings (defaults)
+ * Edit the values below, save, and reload the page. Facilitators can also change
+ * every setting in the app with the gear button (password protected); those
+ * changes are saved on that computer and override the values here.
  */
 window.GETAWAY_CONFIG = {
   // ---- Mission structure ----
@@ -19,9 +21,9 @@ window.GETAWAY_CONFIG = {
   // Cells across and down. Bigger = longer. The exit is placed at the cell
   // farthest from the start, so the solution route is as long as possible.
   mazeWidth: 31,
-  mazeHeight: 19,
+  mazeHeight: 25,
   // 0..1. Higher = more branches and dead ends (harder). 0 = long winding corridors.
-  mazeBranching: 0.6,
+  mazeBranching: 0.7,
 
   // ---- Audit popups ----
   // Seconds of maze time before each popup, drawn at random from this range

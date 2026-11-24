@@ -1,10 +1,39 @@
 {
   "name": "getaway-route",
+  "productName": "The Getaway Route",
+  "version": "1.0.0",
   "private": true,
   "description": "PSY475 escape-room puzzle: The Getaway Route (task-switching maze)",
+  "main": "electron/main.js",
   "scripts": {
+    "start": "electron .",
     "test": "node --test tests/unit.test.js && node tests/e2e.mjs",
     "test:unit": "node --test tests/unit.test.js",
-    "test:e2e": "node tests/e2e.mjs"
+    "test:e2e": "node tests/e2e.mjs",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:mac": "electron-builder --mac --publish never"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  },
+  "build": {
+    "appId": "edu.psy475.getawayroute",
+    "productName": "The Getaway Route",
+    "copyright": "MIT License",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["index.html", "css/**", "js/**", "electron/**", "package.json"],
+    "win": {
+      "target": [{ "target": "portable", "arch": ["x64"] }],
+      "icon": "build/icon.png"
+    },
+    "portable": { "artifactName": "Getaway-Route-${version}-Windows.exe" },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "category": "public.app-category.puzzle-games",
+      "icon": "build/icon.png",
+      "identity": "-"
+    },
+    "dmg": { "artifactName": "Getaway-Route-${version}-macOS.dmg" }
   }
 }

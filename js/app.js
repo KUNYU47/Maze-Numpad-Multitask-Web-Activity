@@ -645,6 +645,7 @@
   }
 
   document.addEventListener("keydown", (e) => {
+    if (window.GR_SETTINGS && window.GR_SETTINGS.isOpen()) return;
     const digit = digitFrom(e);
     if (e.ctrlKey && e.shiftKey && (e.key === "N" || e.key === "n")) { e.preventDefault(); newCase(); return; }
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -741,6 +742,18 @@
     if (e.target.closest("#btn-practice-next")) practiceNext();
   });
 
+  // Facilitator setup: the game pauses (maze clock and audit clock) while it is open.
+  $("btn-setup").addEventListener("click", (e) => { e.currentTarget.blur(); window.GR_SETTINGS.open(); });
+  document.addEventListener("gr-settings", (e) => {
+    const now = performance.now();
+    if (e.detail.open) { S.paused = true; S.pausedAt = now; return; }
+    if (!S.paused) return;
+    const away = now - S.pausedAt;
+    if (S.auditDeadline) S.auditDeadline += away;
+    S.auditShownAt += away;
+    S.paused = false;
+  });
+
   $("btn-begin").addEventListener("click", startBriefing);
   $("btn-begin-real").addEventListener("click", begin);
   $("btn-again").addEventListener("click", newCase);
@@ -769,6 +782,7 @@
     const now = performance.now();
     const dt = Math.min(1000, now - last);
     last = now;
+    if (S.paused) return;
     if (S.mode === "maze") auditTick(dt);
     clockTick(now);
   }, 50);

@@ -349,6 +349,40 @@ try {
   check((await js("window.__GR().mode")) === "maze", "Enter begins the official trace");
   }
 
+  // The access code is not stored in this public repo: set GR_SETUP_CODE to run section 8.
+  const setupCode = process.env.GR_SETUP_CODE;
+  if (want(8) && !setupCode) console.log("8. Facilitator setup: SKIPPED (set GR_SETUP_CODE to the access code to run it)");
+  if (want(8) && setupCode) {
+  console.log("8. Facilitator setup: password, pause, save and reset");
+  await send("Page.navigate", { url: pageUrl });
+  await sleep(1000);
+  await fresh();
+  const defaults = await js("({ rounds: window.GETAWAY_CONFIG.rounds, clock: window.GETAWAY_CONFIG.auditTimeLimitSeconds })");
+  await js(`document.getElementById("btn-setup").click()`);
+  await sleep(100);
+  const since0 = await js("window.__GR().sinceAudit");
+  await sleep(600);
+  check((await js("window.__GR().sinceAudit")) === since0, "the game is paused while setup is open");
+  await js(`document.getElementById("set-pass").value = "wrong"; document.getElementById("set-unlock").click()`);
+  check(/ACCESS DENIED/.test(await js(`document.getElementById("set-lock-msg").textContent`)), "a wrong password is refused");
+  check(await js(`document.getElementById("set-body").classList.contains("hidden")`), "settings stay hidden");
+  await js(`document.getElementById("set-pass").value = ${JSON.stringify(setupCode)}; document.getElementById("set-unlock").click()`);
+  check(!(await js(`document.getElementById("set-body").classList.contains("hidden")`)), "the right password opens the settings");
+  const fields = await js(`document.querySelectorAll("#set-fields .set-row").length`);
+  check(fields >= 20, `every setting has a field (${fields})`);
+  await js(`document.getElementById("set-mazeWidth").value = "200"; document.getElementById("set-save").click()`);
+  check(/from 5 to 60/.test(await js(`document.getElementById("set-msg").textContent`)), "an out-of-range value is rejected");
+  await js(`document.getElementById("set-mazeWidth").value = "12"; document.getElementById("set-rounds").value = "2"; document.getElementById("set-auditTimeLimitSeconds").value = "0"; document.getElementById("set-save").click()`);
+  await sleep(1500);
+  const after = await js("({ rounds: window.GETAWAY_CONFIG.rounds, clock: window.GETAWAY_CONFIG.auditTimeLimitSeconds, w: window.GETAWAY_CONFIG.mazeWidth })");
+  check(after.rounds === 2 && after.clock === 0 && after.w === 12, "saved settings apply after the restart: " + JSON.stringify(after));
+  check((await js(`document.getElementById("intro-rounds").textContent`)) === "2", "the briefing shows the new leg count");
+  await js(`window.confirm = () => true; document.getElementById("btn-setup").click(); document.getElementById("set-pass").value = ${JSON.stringify(setupCode)}; document.getElementById("set-unlock").click(); document.getElementById("set-reset").click()`);
+  await sleep(1500);
+  const reset = await js("({ rounds: window.GETAWAY_CONFIG.rounds, clock: window.GETAWAY_CONFIG.auditTimeLimitSeconds })");
+  check(JSON.stringify(reset) === JSON.stringify(defaults), "reset restores the defaults");
+  }
+
   check(pageErrors.length === 0, "no errors in the page (sound, input, drawing): " + pageErrors.slice(0, 3).join(" | "));
   console.log("\nRules seen: " + JSON.stringify(ruleCounts));
 } catch (err) {
