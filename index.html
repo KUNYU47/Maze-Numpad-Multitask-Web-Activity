@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Getaway Route — GR-475 Route Tracer</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="console" class="console">
+    <span class="screw tl"></span><span class="screw tr"></span><span class="screw bl"></span><span class="screw br"></span>
+
+    <header class="top-strip">
+      <div class="brand">
+        <div class="brand-mark">GR&#8209;475</div>
+        <div class="brand-text">
+          <div class="brand-title">GETAWAY ROUTE TRACER</div>
+          <div class="brand-sub">PRECINCT 475 &middot; MAJOR CASES UNIT &middot; EVIDENCE DIVISION</div>
+        </div>
+      </div>
+      <div class="stripes"><i></i><i></i><i></i><i></i></div>
+      <div class="lamps">
+        <div class="lamp-wrap"><span id="lamp-track" class="lamp green"></span><label>TRACE</label></div>
+        <div class="lamp-wrap"><span id="lamp-audit" class="lamp red"></span><label>AUDIT</label></div>
+        <div class="lamp-wrap"><span id="lamp-exit" class="lamp amber"></span><label>EXIT</label></div>
+      </div>
+    </header>
+
+    <main class="deck">
+      <section class="crt-housing">
+        <div class="crt-label-top">
+          <span>SUSPECT TRACE MONITOR</span>
+          <span id="crt-status" class="crt-status">STANDBY</span>
+        </div>
+        <div class="crt-bezel">
+          <div id="crt" class="crt">
+            <canvas id="maze"></canvas>
+            <div class="scanlines"></div>
+            <div class="vignette"></div>
+            <div id="freeze-stamp" class="freeze-stamp hidden">TRACE FROZEN</div>
+            <div id="crt-toast" class="crt-toast hidden"></div>
+
+            <!-- INTRO -->
+            <div id="intro" class="overlay screen-overlay">
+              <div class="term">
+                <div class="term-head">&gt; CASE FILE 475-GR // OPENED</div>
+                <h1 class="term-title">THE GETAWAY ROUTE</h1>
+                <p>Detective, the suspect slipped out through the old service tunnels. Our tracer has picked up their route. <b>Guide the blip to the exit</b> to follow it.</p>
+                <p>Evidence Records will <b>interrupt you without warning</b> with an <b>EVIDENCE-ID AUDIT</b>. The trace freezes until you answer. Each correct answer prints one digit into the <b>CODE REGISTER</b>.</p>
+                <p>At the exit the suspect left a <b>mark</b>. Decode it with the <b>OLD CASE KEY</b> and enter the full case code.</p>
+                <div class="term-controls">
+                  <span><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
+                  <span><kbd>0</kbd>&ndash;<kbd>9</kbd> or click the keypad to answer</span>
+                </div>
+                <button id="btn-begin" class="key big orange">BEGIN TRACE</button>
+              </div>
+            </div>
+
+            <!-- AUDIT -->
+            <div id="audit" class="overlay audit-overlay hidden" role="dialog" aria-labelledby="audit-title">
+              <div class="audit-device">
+                <div class="audit-head">
+                  <span class="lamp red blink"></span>
+                  <span id="audit-title">EVIDENCE-ID AUDIT</span>
+                  <span class="audit-num" id="audit-num">#01</span>
+                </div>
+                <div class="exhibits">
+                  <div class="exhibit"><div class="tag">EXHIBIT A</div><div class="digit" id="ex-0">0</div></div>
+                  <div class="exhibit"><div class="tag">EXHIBIT B</div><div class="digit" id="ex-1">0</div></div>
+                  <div class="exhibit"><div class="tag">EXHIBIT C</div><div class="digit" id="ex-2">0</div></div>
+                </div>
+                <div class="audit-rule">
+                  <div class="rule-label">ENTER</div>
+                  <div class="rule-text" id="audit-rule">THE HIGHEST DIGIT</div>
+                  <div class="rule-note" id="audit-note"></div>
+                </div>
+                <div class="audit-bottom">
+                  <div class="numpad" id="audit-pad"></div>
+                  <div class="audit-feedback" id="audit-feedback">AWAITING INPUT_</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- EXIT / FINAL CODE -->
+            <div id="exitpanel" class="overlay screen-overlay hidden">
+              <div class="term exit-term">
+                <div class="term-head">&gt; SUSPECT EXIT LOCATED</div>
+                <div class="exit-grid">
+                  <div class="mark-box">
+                    <div class="mark-label">MARK LEFT AT SCENE</div>
+                    <div id="exit-symbol" class="exit-symbol"></div>
+                  </div>
+                  <div class="code-entry">
+                    <p>Decode the mark with the <b>OLD CASE KEY</b>. Enter the <b>register digits in order</b>, then the <b>decoded mark</b>.</p>
+                    <div id="code-display" class="code-display"></div>
+                    <div class="numpad wide" id="final-pad"></div>
+                    <div id="final-feedback" class="final-feedback">&nbsp;</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- CASE CLOSED -->
+            <div id="closed" class="overlay screen-overlay hidden">
+              <div class="term closed-term">
+                <div class="stamp">CASE CLOSED</div>
+                <p id="success-msg" class="success-msg"></p>
+                <table class="stats">
+                  <tr><td>CASE TIME</td><td id="st-time">--</td></tr>
+                  <tr><td>AUDITS CLEARED</td><td id="st-audits">--</td></tr>
+                  <tr><td>AUDIT ERRORS</td><td id="st-errors">--</td></tr>
+                  <tr><td>MEAN AUDIT RESPONSE</td><td id="st-rt">--</td></tr>
+                  <tr><td>CODE ATTEMPTS</td><td id="st-attempts">--</td></tr>
+                </table>
+                <button id="btn-again" class="key orange">OPEN NEW CASE</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="crt-label-bottom">
+          <span>&uarr;&darr;&larr;&rarr; / WASD &mdash; FOLLOW THE ROUTE</span>
+          <span class="model">PHOSPHOR P1 &middot; 15&Prime;</span>
+        </div>
+      </section>
+
+      <aside class="side">
+        <div class="panel">
+          <div class="panel-label">CASE TIMER</div>
+          <div class="lcd" id="timer">00:00</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-label">CODE REGISTER</div>
+          <div class="register" id="register"></div>
+          <div class="panel-hint" id="register-hint">AUDIT DIGITS PRINT HERE</div>
+        </div>
+
+        <div class="panel casekey-panel">
+          <div class="panel-label">OLD CASE KEY <span class="faded">&middot; ARCHIVE 1979</span></div>
+          <div class="casekey" id="casekey"></div>
+        </div>
+
+        <div class="panel controls-panel">
+          <button id="btn-sound" class="key small">SOUND: ON</button>
+          <button id="btn-reset" class="key small">NEW CASE</button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/symbols.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/maze.js"></script>
+  <script src="js/audit.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
