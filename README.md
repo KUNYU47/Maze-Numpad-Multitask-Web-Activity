@@ -21,11 +21,11 @@ A full mission takes about 5 minutes.
 1. Read the case briefing and press **BEGIN TRACE** (or Enter).
 2. Move the amber blip with the **arrow keys** or **WASD** from `IN` (top left) to the exit. The exit is hidden somewhere deep in the maze (always the spot farthest from the start).
 3. Without warning, an **Evidence-ID Audit** pops up and the maze freezes. Five exhibit digits are shown with a rule, for example *the highest digit*, *the right-most odd digit*, or *the digit that appears twice*. Type the answer on the top-row digits or the numpad (NumLock on or off), or click the on-screen keypad.
-   - **Correct:** the digit is printed into the **Code Register** and the maze unfreezes.
+   - **Correct:** the digit is printed into the **Code Register** and the maze unfreezes. Audits **keep coming until you reach the exit**. Once a leg's 4 slots are full, each new correct answer **overwrites the oldest slot** (A01, then A02, ...). A blinking orange bar marks the slot that will be overwritten next, and the audit says which slot it will replace. The code is whatever the register shows when you reach the exit.
    - **Wrong:** a **strike**, then a new audit. **Three strikes scrub the mission** and it restarts with a new code.
 4. **Route errors.** Hitting a wall (once per key press, holding a key doesn't count again) or doubling back along your route (once per retreat, however many steps) is a route error, shown on the **Route Errors** meter. At 12 errors the trail is lost: the maze for that leg **scrambles** into a new one and you restart from `IN`. Audit digits you've earned are kept.
 5. Audits are **evenly paced but unpredictable**: after each audit, the next one comes after a fresh random gap of 8 to 16 seconds of maze time. There is no slow start and no build-up, yet players can never tell exactly when the next one is coming.
-6. The exit stays **sealed (LOCK)** until the leg's audit digits are collected. Standing at a sealed exit makes the remaining audits come much faster.
+6. The exit stays **sealed (LOCK)** until the leg's 4 slots have been filled once. Standing at a sealed exit makes the remaining audits come much faster.
 7. The mission has **two legs** (two mazes). At each exit the suspect leaves a **mark** (symbol), which is logged in the register.
 8. After leg 2, enter the full **10-digit case code**: the register read left to right, top to bottom, replacing each mark with its number from the **Old Case Key**. The correct code shows **CASE CLOSED** and sends players to the **evidence desk**.
 
@@ -70,6 +70,7 @@ All settings live in **`js/config.js`**. Edit, save, and reload the browser.
 - Players alternate between two tasks with different goals and response sets: spatial navigation (arrow keys) and numeric judgement (digit keys). Each audit forces a **switch** and a reconfiguration of the task set, and returning to the maze forces another.
 - Audits arrive after **random gaps**, so players cannot predict the switch. This removes the benefit of anticipatory preparation and makes switch costs larger, while the even pacing keeps the switching load steady across the whole run.
 - Rules are **dealt from a deck**, so the active rule keeps changing and players can't settle into one rule.
+- Audits continue until the exit and **overwrite** older digits, so players must keep updating what they hold in working memory instead of filling the register once and forgetting it.
 - **Strikes** raise the stakes of each switch, so players must balance speed against accuracy.
 - **Five exhibits** instead of three raise the working-memory and visual-search load of each audit, which makes the switch more costly.
 - **Route errors** push players to plan the route ahead (goal maintenance) instead of trial and error, so an interruption mid-plan hurts more.
@@ -109,6 +110,7 @@ npm test
 
 ## Changelog
 
+- **v0.5** Audits keep coming until the exit. After a leg's register is full, each correct answer overwrites the oldest slot, so players must re-check the register; the next slot to be overwritten blinks, and the audit shows which slot (and its current digit) it replaces.
 - **v0.4.2** Audit popup sound: a tape STOP clunk with the motor winding down, then a warbling alert bell. New exhibits after a wrong answer get a short double chirp instead.
 - **v0.4.1** Tape-deck sounds: buttons now make a cassette-deck "ka-chunk" (plastic snap, latch thunk, spring ring, then the key popping back up); BEGIN and NEXT LEG sound like pressing PLAY with the motor spinning up. Maze moves tick like a tape counter (lower tick when doubling back) and wall hits thump. The end-to-end test now also fails on any page error.
 - **v0.4** Audit rules are dealt like a deck (each rule once before any repeats). With a random code, each audit is built first and its answer becomes the code digit, so every rule is always available. Popups now come after an even random gap (8 to 16 s) instead of a rising chance, so there is no slow start. Tests cover both.

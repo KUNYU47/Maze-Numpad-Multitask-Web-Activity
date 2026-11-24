@@ -135,12 +135,15 @@ async function answerCorrectly() {
   check(typeof ans === "number", `rule "${s.rule}" on [${s.digits}] has a single answer (got ${ans})`);
   check(s.digits.length === 5, `audit shows 5 exhibits (got ${s.digits.length})`);
   const method = methods[methodIx++ % methods.length];
-  const before = s.register.join("").length;
+  const before = await js(`(() => { const S = window.__GR(); return { slot: S.auditSlot, row: S.earned[S.round].slice(), answered: S.answered[S.round] }; })()`);
+  check(before.slot === before.answered % 4, `audit targets slot A0${before.answered % 4 + 1} (oldest first)`);
   await enterDigit(ans, method);
   await sleep(150);
   const after = await screen();
-  const ok = after.register.join("").length === before + 1 && after.strikes === s.strikes;
-  check(ok, `answer ${ans} for "${s.rule}" [${s.digits}] via ${method} was accepted (feedback: ${after.feedback})`);
+  const row = await js(`window.__GR().earned[window.__GR().round].slice()`);
+  const expected = before.row.slice(); expected[before.slot] = ans;
+  const ok = JSON.stringify(row) === JSON.stringify(expected) && after.strikes === s.strikes;
+  check(ok, `answer ${ans} for "${s.rule}" [${s.digits}] via ${method} was accepted into A0${before.slot + 1} (row ${JSON.stringify(row)}, feedback: ${after.feedback})`);
   await waitMode(["maze", "exit"], 3000);
 }
 
@@ -241,7 +244,7 @@ try {
   await js(`window.confirm = () => true; document.getElementById("btn-reset").click(); document.getElementById("btn-begin").click()`);
   ruleSequence.length = 0;
   for (let n = 0; n < 64; n++) {
-    await js(`(() => { const S = window.__GR(); S.earned[S.round].length = 0; S.sinceAudit = 1e9; })()`);
+    await js(`(() => { const S = window.__GR(); S.sinceAudit = 1e9; })()`);
     if ((await waitMode(["audit"], 3000)) !== "audit") { check(false, "stress audit " + n + " appeared"); break; }
     while (await js("window.__GR().auditLocked")) await sleep(50);
     await answerCorrectly();

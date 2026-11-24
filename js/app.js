@@ -26,7 +26,7 @@
     timer: $("timer"), roundLcd: $("round-lcd"), strikes: $("strikes"), auditStrikes: $("audit-strikes"),
     register: $("register"), regHint: $("register-hint"), casekey: $("casekey"),
     lampTrack: $("lamp-track"), lampAudit: $("lamp-audit"), lampExit: $("lamp-exit"),
-    auditNum: $("audit-num"), auditRule: $("audit-rule"), auditNote: $("audit-note"),
+    auditNum: $("audit-num"), auditRuleLabel: document.querySelector("#audit .rule-label"), auditRule: $("audit-rule"), auditNote: $("audit-note"),
     auditPad: $("audit-pad"), auditFeedback: $("audit-feedback"),
     exitHead: $("exit-head"), markLabel: $("mark-label"), exitSymbol: $("exit-symbol"),
     roundEnd: $("round-end"), roundEndText: $("round-end-text"), codeEntry: $("code-entry"),
@@ -87,6 +87,10 @@
       marks: Array.from({ length: ROUNDS }, (_, r) => symbolFor(code[markIndex(r)])),
       revealed: Array(ROUNDS).fill(false),
       earned: Array.from({ length: ROUNDS }, () => []),
+      // Correct answers per leg. After the register is full, audits keep coming and
+      // each correct answer overwrites the oldest slot (A01, A02, ... then A01 again).
+      answered: Array(ROUNDS).fill(0),
+      auditSlot: 0,
       round: 0,
       maze: null, pos: null, trail: null,
       sinceAudit: 0, rush: false,
@@ -144,6 +148,7 @@
         const slot = document.createElement("div");
         slot.className = "reg-slot" + (v !== undefined ? " filled" : "");
         if (printed && printed[0] === r && printed[1] === i) slot.classList.add("printed");
+        if (r === S.round && S.earned[r].length >= PER && S.answered[r] % PER === i && S.mode !== "closed") slot.classList.add("next");
         slot.innerHTML = '<div class="reg-digit">' + (v !== undefined ? v : "&ndash;") + "</div>";
         row.appendChild(slot);
       }
@@ -154,6 +159,10 @@
       el.register.appendChild(row);
     }
     const left = PER - S.earned[S.round].length;
+    if (left <= 0 && S.mode !== "closed" && !S.revealed[S.round]) {
+      el.regHint.textContent = "LEG " + (S.round + 1) + " FULL \u00b7 NEXT AUDIT OVERWRITES A" + String((S.answered[S.round] % PER) + 1).padStart(2, "0");
+      return;
+    }
     el.regHint.textContent =
       left > 0 ? "LEG " + (S.round + 1) + ": " + left + " AUDIT DIGIT" + (left === 1 ? "" : "S") + " OUTSTANDING"
                : "LEG " + (S.round + 1) + " REGISTER COMPLETE · EXIT UNSEALED";
@@ -271,7 +280,6 @@
   }
 
   function auditTick(dt) {
-    if (roundDone()) return;
     if (S.nextAuditIn == null) S.nextAuditIn = nextGap();
     S.sinceAudit += dt;
     if (S.sinceAudit >= S.nextAuditIn) openAudit();
@@ -279,7 +287,8 @@
 
   function openAudit(retry) {
     S.mode = "audit";
-    const i = S.earned[S.round].length;
+    const i = S.answered[S.round] % PER; // slot this answer will fill (or overwrite)
+    S.auditSlot = i;
     const idx = auditIndex(S.round, i);
     // With a random code, each audit is built first and its answer becomes that code
     // digit, so every rule is always available. With a fixed code, the audit must hit it.
@@ -288,7 +297,10 @@
     S.auditShownAt = performance.now();
     S.auditLocked = false;
     S.auditCount++;
-    el.auditNum.textContent = "L" + (S.round + 1) + " · " + (i + 1) + "/" + PER;
+    const overwriting = S.earned[S.round][i] !== undefined;
+    const slotName = "A" + String(i + 1).padStart(2, "0");
+    el.auditNum.textContent = "L" + (S.round + 1) + " \u00b7 " + slotName;
+    el.auditRuleLabel.textContent = overwriting ? "ENTER \u00b7 OVERWRITES " + slotName + " (NOW " + S.earned[S.round][i] + ")" : "ENTER";
     S.audit.digits.forEach((d, k) => ($("ex-" + k).textContent = d));
     el.auditRule.textContent = S.audit.criterion.text;
     el.auditNote.textContent = S.audit.note ? "(" + S.audit.note + ")" : "";
@@ -312,11 +324,16 @@
     S.auditLocked = true;
     if (v === S.audit.answer) {
       S.stats.rts.push(performance.now() - S.auditShownAt);
-      S.earned[S.round].push(v);
-      el.auditFeedback.textContent = "VERIFIED · DIGIT " + v + " LOGGED";
+      const slot = S.auditSlot;
+      const old = S.earned[S.round][slot];
+      S.earned[S.round][slot] = v;
+      S.answered[S.round]++;
+      el.auditFeedback.textContent = old === undefined
+        ? "VERIFIED \u00b7 DIGIT " + v + " LOGGED IN A" + String(slot + 1).padStart(2, "0")
+        : "VERIFIED \u00b7 A" + String(slot + 1).padStart(2, "0") + " UPDATED " + old + " \u2192 " + v;
       el.auditFeedback.className = "audit-feedback ok";
       window.GR_SOUND.correct();
-      renderRegister([S.round, S.earned[S.round].length - 1]);
+      renderRegister([S.round, slot]);
       setTimeout(closeAudit, 650);
     } else {
       S.strikes++;
@@ -346,7 +363,8 @@
     el.status.textContent = "TRACKING";
     setLamps();
     if (roundDone()) {
-      toast("LEG " + (S.round + 1) + " REGISTER COMPLETE · EXIT UNSEALED", 2400);
+      if (S.answered[S.round] === PER) toast("LEG " + (S.round + 1) + " REGISTER COMPLETE \u00b7 EXIT UNSEALED \u00b7 AUDITS CONTINUE", 2600);
+      else toast("REGISTER UPDATED \u00b7 RE-CHECK YOUR DIGITS", 1800);
       if (atExit()) reachExit();
     }
   }
