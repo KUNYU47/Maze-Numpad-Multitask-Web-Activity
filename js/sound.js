@@ -103,6 +103,25 @@ window.GR_SOUND = (function () {
     osc.stop(t0 + dur + 0.02);
   }
 
+  // Capstan motor winding down (the tape stops: the maze freezes).
+  function motorStop(start, dur) {
+    if (!ready()) return;
+    const t0 = ctx.currentTime + start;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(120, t0);
+    osc.frequency.exponentialRampToValueAtTime(25, t0 + dur);
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 450;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.06, t0);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(lp).connect(gain).connect(master);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
   return {
     unlock,
     setEnabled(v) { enabled = v; },
@@ -127,6 +146,15 @@ window.GR_SOUND = (function () {
     bump() { noise(0, 0.05, 220, 0.35, "lowpass", 1); tone(60, 0, 0.06, "sine", 0.12, 40); },
 
     // Events
+    // Audit popup: STOP key clunk + motor winding down, then a warbling alert bell.
+    interrupt() {
+      tapeKey(1.25);
+      motorStop(0.02, 0.45);
+      for (let i = 0; i < 6; i++) tone(i % 2 ? 1050 : 1400, 0.16 + i * 0.055, 0.05, "square", 0.07);
+      tone(1400, 0.5, 0.18, "triangle", 0.06, 1100);
+    },
+    // New exhibits after a wrong answer: short double chirp.
+    reissue() { tone(1400, 0, 0.05, "square", 0.06); tone(1050, 0.07, 0.07, "square", 0.06); },
     alarm() { tone(880, 0, 0.12, "square"); tone(660, 0.14, 0.12, "square"); tone(880, 0.28, 0.14, "square"); },
     correct() { tone(660, 0, 0.08, "triangle", 0.1); tone(990, 0.08, 0.14, "triangle", 0.1); },
     wrong() { tone(140, 0, 0.32, "sawtooth", 0.09); },

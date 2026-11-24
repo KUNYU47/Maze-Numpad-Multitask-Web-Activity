@@ -277,7 +277,7 @@
     if (S.sinceAudit >= S.nextAuditIn) openAudit();
   }
 
-  function openAudit() {
+  function openAudit(retry) {
     S.mode = "audit";
     const i = S.earned[S.round].length;
     const idx = auditIndex(S.round, i);
@@ -301,7 +301,8 @@
     void el.audit.offsetWidth;
     el.audit.classList.add("pop");
     setLamps();
-    window.GR_SOUND.alarm();
+    if (retry) window.GR_SOUND.reissue();
+    else window.GR_SOUND.interrupt();
   }
 
   function answerAudit(k) {
@@ -332,7 +333,7 @@
       const left = MAX_STRIKES - S.strikes;
       el.auditFeedback.textContent = "MISMATCH · STRIKE " + S.strikes + " · " + left + " LEFT";
       el.auditFeedback.className = "audit-feedback bad";
-      setTimeout(() => { device.classList.remove("shake"); openAudit(); }, 1100);
+      setTimeout(() => { device.classList.remove("shake"); openAudit(true); }, 1100);
     }
   }
 
