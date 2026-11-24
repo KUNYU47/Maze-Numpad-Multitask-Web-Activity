@@ -1,5 +1,6 @@
 // End-to-end test: plays the real page in headless Edge/Chrome with real key presses.
 // Run with:  node tests/e2e.mjs        (Windows; set BROWSER=path\to\chrome.exe to override)
+// Run only some sections:  node tests/e2e.mjs 1 3
 //
 // Audits are answered by reading the exhibits and the rule text off the screen and
 // solving them independently, so a mismatch between what is shown and what the game
@@ -31,6 +32,8 @@ const browser = spawn(browserPath, [
   `--user-data-dir=${profile}`, "--no-first-run", "--autoplay-policy=no-user-gesture-required", "--allow-file-access-from-files", "about:blank"
 ]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const only = process.argv.slice(2).map(Number).filter(Boolean);
+const want = (n) => !only.length || only.includes(n);
 const watchdog = setTimeout(() => {
   console.log("TIMEOUT: test run took longer than 5 minutes");
   browser.kill();
@@ -179,20 +182,28 @@ try {
   await send("Page.navigate", { url: pageUrl });
   await sleep(1200);
 
+  const fresh = () => js(`window.confirm = () => true; document.getElementById("btn-reset").click(); document.getElementById("btn-begin").click()`);
+
+  if (want(1)) {
   console.log("1. Full mission with every input method");
-  await js(`document.getElementById("btn-begin").click()`);
-  const leg1 = await playLeg();
-  check(leg1 === "exit", "leg 1 reaches the exit (got " + leg1 + ")");
-  await press("Enter", "Enter", 13, "\r");
-  await sleep(300);
-  check((await js("window.__GR().round")) === 1, "Enter starts leg 2");
-  const leg2 = await playLeg();
-  check(leg2 === "exit", "leg 2 reaches the exit (got " + leg2 + ")");
+  await fresh();
+  const legs = await js("window.GETAWAY_CONFIG.rounds");
+  for (let r = 0; r < legs; r++) {
+    const res = await playLeg();
+    check(res === "exit", `leg ${r + 1} reaches the exit (got ${res})`);
+    if (r < legs - 1) {
+      await press("Enter", "Enter", 13, "\r");
+      await sleep(300);
+      check((await js("window.__GR().round")) === r + 1, `Enter starts leg ${r + 2}`);
+    }
+  }
   const code = await js(`window.__GR().code.join("")`);
   const shown = await js(`window.__GR().earned.map(r => r.join(""))`);
-  check(shown[0] === code.slice(0, 4) && shown[1] === code.slice(5, 9), "register digits match the code");
+  check(shown.every((row, r) => row === code.slice(r * 5, r * 5 + 4)), "register digits match the code");
+  const boxes = await js(`document.querySelectorAll("#code-display .cd-box").length`);
+  check(boxes === code.length, `final screen shows ${code.length} boxes (got ${boxes})`);
   // wrong code first, then the right one via the numpad with NumLock off
-  for (const ch of "0000000000") await enterDigit(ch, "row");
+  for (const ch of "0".repeat(code.length)) await enterDigit(ch, "row");
   await press("Enter", "Enter", 13, "\r");
   await sleep(700);
   check((await js("window.__GR().mode")) === "exit", "wrong final code is rejected");
@@ -200,9 +211,11 @@ try {
   await press("Enter", "NumpadEnter", 13, "\r");
   await sleep(500);
   check((await js("window.__GR().mode")) === "closed", "correct final code closes the case");
+  }
 
+  if (want(2)) {
   console.log("2. Wrong audit answers give strikes; three strikes fail the mission");
-  await js(`document.getElementById("btn-again").click(); document.getElementById("btn-begin").click()`);
+  await fresh();
   for (let k = 1; k <= 3; k++) {
     check((await waitMode(["audit"])) === "audit", "audit appears");
     while (await js("window.__GR().auditLocked")) await sleep(80);
@@ -214,13 +227,15 @@ try {
     check((await js("window.__GR().earned[0].length")) === 0, "no digit for a wrong answer");
   }
   check((await waitMode(["failed"], 3000)) === "failed", "mission fails after 3 strikes");
+  }
 
+  if (want(3)) {
   console.log("3. Route errors: wall hits, doubling back, and the maze rescramble");
-  await press("Enter", "Enter", 13, "\r"); // restart from the failure screen
+  await fresh();
   await sleep(300);
   await js(`window.__GR().sinceAudit = -1e9`); // keep audits away during this test
   const wallDir = await js(`(() => { const S = window.__GR(); const c = S.maze.cells[S.pos.y][S.pos.x];
-    return (c & 1) ? "ArrowUp" : (c & 8) ? "ArrowLeft" : null; })()`);
+    return [[1,"ArrowUp"],[2,"ArrowRight"],[4,"ArrowDown"],[8,"ArrowLeft"]].find(([b]) => c & b)[1]; })()`);
   await arrow(wallDir);
   await sleep(50);
   check((await js("window.__GR().route.errors")) === 1, "a wall hit is a route error");
@@ -228,7 +243,9 @@ try {
   await sleep(50);
   check((await js("window.__GR().route.errors")) === 1, "holding a key against a wall is not counted again");
   const openDir = await js(`(() => { const S = window.__GR(); const c = S.maze.cells[S.pos.y][S.pos.x];
-    return !(c & 2) ? ["ArrowRight","ArrowLeft"] : ["ArrowDown","ArrowUp"]; })()`);
+    const back = { ArrowUp: "ArrowDown", ArrowDown: "ArrowUp", ArrowLeft: "ArrowRight", ArrowRight: "ArrowLeft" };
+    const go = [[1,"ArrowUp"],[2,"ArrowRight"],[4,"ArrowDown"],[8,"ArrowLeft"]].find(([b]) => !(c & b))[1];
+    return [go, back[go]]; })()`);
   await arrow(openDir[0]); await sleep(50);
   await arrow(openDir[1]); await sleep(50);
   check((await js("window.__GR().route.errors")) === 2, "doubling back is a route error");
@@ -239,9 +256,11 @@ try {
   await waitMode(["maze"], 4000);
   check((await js(`JSON.stringify(window.__GR().maze.cells)`)) !== mazeBefore, "a new maze is generated");
   check((await js("window.__GR().route.errors")) === 0, "route errors reset after the rescramble");
+  }
 
+  if (want(4)) {
   console.log("4. Stress: 64 more audits answered from the screen, rules dealt like a deck");
-  await js(`window.confirm = () => true; document.getElementById("btn-reset").click(); document.getElementById("btn-begin").click()`);
+  await fresh();
   ruleSequence.length = 0;
   for (let n = 0; n < 64; n++) {
     await js(`(() => { const S = window.__GR(); S.sinceAudit = 1e9; })()`);
@@ -257,9 +276,11 @@ try {
     return new Set(ruleSequence.slice(0, o)).size === o; // the partial cycle before it has no repeats either
   });
   check(aligned !== undefined, "rules are dealt in full cycles with no repeats: " + ruleSequence.join(", "));
+  }
 
+  if (want(5)) {
   console.log("5. Popup pacing: gaps stay inside the configured range");
-  await js(`window.confirm = () => true; document.getElementById("btn-reset").click(); document.getElementById("btn-begin").click()`);
+  await fresh();
   const range = [1.5, 3]; // demo-mode range set in js/app.js
   for (let k = 0; k < 4; k++) { // 4 audits per leg
     const t0 = Date.now();
@@ -269,6 +290,7 @@ try {
     while (await js("window.__GR().auditLocked")) await sleep(50);
     await answerCorrectly();
     if ((await js("window.__GR().mode")) !== "maze") break;
+  }
   }
 
   check(pageErrors.length === 0, "no errors in the page (sound, input, drawing): " + pageErrors.slice(0, 3).join(" | "));

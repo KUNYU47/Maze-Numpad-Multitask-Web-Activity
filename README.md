@@ -19,15 +19,15 @@ You can also just double-click `index.html`.
 A full mission takes about 5 minutes.
 
 1. Read the case briefing and press **BEGIN TRACE** (or Enter).
-2. Move the amber blip with the **arrow keys** or **WASD** from `IN` (top left) to the exit. The exit is hidden somewhere deep in the maze (always the spot farthest from the start).
+2. Move the amber blip with the **arrow keys** or **WASD** from `IN` to the `EXIT`. Every maze puts them at random spots on **opposite edges** (left and right, or top and bottom), with the exit among the edge cells farthest from the start. Each maze has **exactly two routes** to the exit, of similar length and sharing as little as possible, so spotting one route doesn't make it easy.
 3. Without warning, an **Evidence-ID Audit** pops up and the maze freezes. Five exhibit digits are shown with a rule, for example *the highest digit*, *the right-most odd digit*, or *the digit that appears twice*. Type the answer on the top-row digits or the numpad (NumLock on or off), or click the on-screen keypad.
    - **Correct:** the digit is printed into the **Code Register** and the maze unfreezes. Audits **keep coming until you reach the exit**. Once a leg's 4 slots are full, each new correct answer **overwrites the oldest slot** (A01, then A02, ...). A blinking orange bar marks the slot that will be overwritten next, and the audit says which slot it will replace. The code is whatever the register shows when you reach the exit.
    - **Wrong:** a **strike**, then a new audit. **Three strikes scrub the mission** and it restarts with a new code.
-4. **Route errors.** Hitting a wall (once per key press, holding a key doesn't count again) or doubling back along your route (once per retreat, however many steps) is a route error, shown on the **Route Errors** meter. At 12 errors the trail is lost: the maze for that leg **scrambles** into a new one and you restart from `IN`. Audit digits you've earned are kept.
+4. **Route errors.** Hitting a wall (once per key press, holding a key doesn't count again) or doubling back along your route (once per retreat, however many steps) is a route error, shown on the **Route Errors** meter. At 10 errors the trail is lost: the maze for that leg **scrambles** into a new one and you restart from `IN`. Audit digits you've earned are kept.
 5. Audits are **evenly paced but unpredictable**: after each audit, the next one comes after a fresh random gap of 8 to 16 seconds of maze time. There is no slow start and no build-up, yet players can never tell exactly when the next one is coming.
 6. The exit stays **sealed (LOCK)** until the leg's 4 slots have been filled once. Standing at a sealed exit makes the remaining audits come much faster.
-7. The mission has **two legs** (two mazes). At each exit the suspect leaves a **mark** (symbol), which is logged in the register.
-8. After leg 2, enter the full **10-digit case code**: the register read left to right, top to bottom, replacing each mark with its number from the **Old Case Key**. The correct code shows **CASE CLOSED** and sends players to the **evidence desk**.
+7. The mission has **three legs** (three mazes). At each exit the suspect leaves a **mark** (symbol), which is logged in the register.
+8. After the last leg, enter the full **15-digit case code** (one row per leg, laid out like the register): the register read left to right, top to bottom, replacing each mark with its number from the **Old Case Key**. The correct code shows **CASE CLOSED** and sends players to the **evidence desk**.
 
 ![Final code entry](docs/final-code.png)
 
@@ -41,15 +41,15 @@ All settings live in **`js/config.js`**. Edit, save, and reload the browser.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| `rounds` | `2` | Number of legs (mazes) in a mission. |
+| `rounds` | `3` | Number of legs (mazes) in a mission. |
 | `auditsPerRound` | `4` | Audit digits per leg. Code length = rounds × (audits + 1). |
 | `fixedCode` | `null` | `null` = new random code every run. Or set a fixed code of the right length, e.g. `"4719238065"`. |
 | `mazeWidth` / `mazeHeight` | `31` / `19` | Maze size in cells. |
-| `mazeBranching` | `0.3` | 0 to 1. Higher means more junctions and dead ends. |
+| `mazeBranching` | `0.6` | 0 to 1. Higher means more junctions and dead ends. |
 | `auditGapSeconds` | `[8, 16]` | Seconds of maze time between popups, drawn at random from this range each time. |
 | `rushGapSeconds` | `[1, 2.5]` | Gap range once a player waits at a sealed exit. |
 | `auditExhibits` | `5` | Digits shown per audit (3 or 5; odd numbers keep "middle value" possible). |
-| `routeErrorLimit` | `12` | Route errors before the maze scrambles. `0` turns route penalties off. |
+| `routeErrorLimit` | `10` | Route errors before the maze scrambles. `0` turns route penalties off. |
 | `penalizeWallHits` | `true` | Wall hits count as route errors. |
 | `penalizeBacktracking` | `true` | Doubling back counts as a route error. |
 | `maxStrikes` | `3` | Wrong audit answers allowed before the mission is scrubbed. |
@@ -94,6 +94,7 @@ Start Getaway Route.bat  Windows launcher
 Run Tests.bat            Runs all tests (Windows)
 tests/unit.test.js       Unit tests: audit rules, generator, maze, route errors
 tests/e2e.mjs            End-to-end test in headless Edge/Chrome with real key presses
+                         (run only some sections: node tests/e2e.mjs 1 3)
 docs/                    Screenshots for this README
 ```
 
@@ -105,11 +106,12 @@ Needs [Node.js](https://nodejs.org) 22 or newer. The end-to-end test also needs 
 npm test
 ```
 
-- **Unit tests** check every audit rule against an independently written answer key for **every** possible 3-digit and 5-digit combination, check that generated audits always have the intended answer, that mazes are always solvable with the exit at the farthest point, the rule deck (each rule once per cycle, never twice in a row), and the route-error rules.
+- **Unit tests** check every audit rule against an independently written answer key for **every** possible 3-digit and 5-digit combination, check that generated audits always have the intended answer, that start and exit sit on opposite edges and every maze has exactly two routes of similar length, the rule deck (each rule once per cycle, never twice in a row), and the route-error rules.
 - **End-to-end test** opens the real page in a hidden browser and plays it with real key presses. It reads the exhibits and rule off the screen, solves them independently, and answers using the top-row digits, the numpad with NumLock on, the numpad with NumLock off, and mouse clicks. It also checks strikes, mission failure, the final code, wall hits, doubling back, and the maze scramble, then runs 64 more audits as a stress test, checking that rules are dealt in full cycles and that popup gaps stay in range.
 
 ## Changelog
 
+- **v0.6** Random start and exit on opposite edges of each maze. Each maze has exactly two solution routes of similar length that share as little as possible (the shorter route is never more than 10% shorter than the original). Final code entry shows one row per leg, so 3+ legs fit. Config now defaults to 3 legs, branching 0.6 and 10 route errors. Browser test sections can run on their own.
 - **v0.5** Audits keep coming until the exit. After a leg's register is full, each correct answer overwrites the oldest slot, so players must re-check the register; the next slot to be overwritten blinks, and the audit shows which slot (and its current digit) it replaces.
 - **v0.4.2** Audit popup sound: a tape STOP clunk with the motor winding down, then a warbling alert bell. New exhibits after a wrong answer get a short double chirp instead.
 - **v0.4.1** Tape-deck sounds: buttons now make a cassette-deck "ka-chunk" (plastic snap, latch thunk, spring ring, then the key popping back up); BEGIN and NEXT LEG sound like pressing PLAY with the motor spinning up. Maze moves tick like a tape counter (lower tick when doubling back) and wall hits thump. The end-to-end test now also fails on any page error.

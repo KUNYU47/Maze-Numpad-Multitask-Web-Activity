@@ -11,49 +11,128 @@ const api = (function () {
     { bit: W, dx: -1, dy: 0, opp: E }
   ];
 
+  const key = (x, y) => y * 100000 + x;
+
+  // Breadth-first search over open passages. Returns distance and parent maps.
+  function bfs(cells, w, h, from) {
+    const dist = cells.map((r) => r.map(() => -1));
+    const parent = new Map();
+    dist[from.y][from.x] = 0;
+    const q = [[from.x, from.y]];
+    for (let qi = 0; qi < q.length; qi++) {
+      const [x, y] = q[qi];
+      for (const d of DIRS) {
+        if (cells[y][x] & d.bit) continue;
+        const nx = x + d.dx, ny = y + d.dy;
+        if (dist[ny][nx] !== -1) continue;
+        dist[ny][nx] = dist[y][x] + 1;
+        parent.set(key(nx, ny), { x, y });
+        q.push([nx, ny]);
+      }
+    }
+    return { dist, parent };
+  }
+
+  // Cells from `root` to (x, y) using a BFS parent map (root first).
+  function pathTo(parent, root, x, y) {
+    const out = [{ x, y }];
+    while (x !== root.x || y !== root.y) {
+      const p = parent.get(key(x, y));
+      x = p.x; y = p.y;
+      out.push({ x, y });
+    }
+    return out.reverse();
+  }
+
+  // Random start on one edge, exit on the opposite edge.
+  function pickEnds(cells, w, h, rnd) {
+    const horizontal = rnd() < 0.5; // left<->right, otherwise top<->bottom
+    const flip = rnd() < 0.5;
+    const edge = (side) => {
+      const out = [];
+      if (horizontal) for (let y = 0; y < h; y++) out.push({ x: side ? w - 1 : 0, y });
+      else for (let x = 0; x < w; x++) out.push({ x, y: side ? h - 1 : 0 });
+      return out;
+    };
+    const startEdge = edge(flip ? 1 : 0), exitEdge = edge(flip ? 0 : 1);
+    const start = startEdge[Math.floor(rnd() * startEdge.length)];
+    // Exit: a random pick among the quarter of opposite-edge cells farthest from
+    // the start, so the route stays long however the ends land.
+    const { dist } = bfs(cells, w, h, start);
+    const ranked = exitEdge.slice().sort((a, b) => dist[b.y][b.x] - dist[a.y][a.x]);
+    const top = ranked.slice(0, Math.max(1, Math.ceil(ranked.length / 4)));
+    const exit = top[Math.floor(rnd() * top.length)];
+    return { start, exit, side: horizontal ? (flip ? "right-left" : "left-right") : (flip ? "bottom-top" : "top-bottom") };
+  }
+
+  // Open exactly one extra wall so there are exactly two routes from start to exit.
+  // The second route is chosen to be about as long as the first (never much shorter)
+  // and to share as little of it as possible, so the maze stays just as hard.
+  function addSecondRoute(cells, w, h, start, exit, rnd) {
+    const fromS = bfs(cells, w, h, start), fromE = bfs(cells, w, h, exit);
+    const main = pathTo(fromS.parent, start, exit.x, exit.y);
+    const L = main.length - 1;
+    const onMain = new Set(main.map((c) => key(c.x, c.y)));
+    const cands = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      for (const d of [DIRS[1], DIRS[2]]) { // E and S: each interior wall once
+        const nx = x + d.dx, ny = y + d.dy;
+        if (nx >= w || ny >= h || !(cells[y][x] & d.bit)) continue;
+        for (const [a, b] of [[{ x, y }, { x: nx, y: ny }], [{ x: nx, y: ny }, { x, y }]]) {
+          const L2 = fromS.dist[a.y][a.x] + 1 + fromE.dist[b.y][b.x];
+          if (L2 < 0.9 * L || L2 > 1.3 * L) continue;
+          const first = pathTo(fromS.parent, start, a.x, a.y);
+          const second = pathTo(fromE.parent, exit, b.x, b.y);
+          const firstSet = new Set(first.map((c) => key(c.x, c.y)));
+          if (second.some((c) => firstSet.has(key(c.x, c.y)))) continue; // not a simple route
+          const route = first.concat(second.reverse());
+          const shared = route.filter((c) => onMain.has(key(c.x, c.y))).length;
+          cands.push({ a, b, d, route, L2, score: shared / main.length + Math.abs(L2 / L - 1) });
+        }
+      }
+    }
+    if (!cands.length) return { routes: [main] };
+    cands.sort((p, q) => p.score - q.score);
+    const pick = cands[Math.floor(rnd() * Math.min(5, cands.length))];
+    // Open the wall between a and b.
+    const dir = DIRS.find((k) => k.dx === pick.b.x - pick.a.x && k.dy === pick.b.y - pick.a.y);
+    cells[pick.a.y][pick.a.x] &= ~dir.bit;
+    cells[pick.b.y][pick.b.x] &= ~dir.opp;
+    return { routes: [main, pick.route] };
+  }
+
   // Growing-tree generator. branching 0 = recursive backtracker (long corridors),
   // higher = more junctions and dead ends.
-  function generate(w, h, branching) {
+  function generate(w, h, branching, rng) {
+    const rnd = rng || Math.random;
     const cells = [];
     for (let y = 0; y < h; y++) {
       cells.push([]);
       for (let x = 0; x < w; x++) cells[y].push(N | E | S | W);
     }
     const seen = cells.map((r) => r.map(() => false));
-    const active = [[0, 0]];
-    seen[0][0] = true;
+    const sx = Math.floor(rnd() * w), sy = Math.floor(rnd() * h);
+    const active = [[sx, sy]];
+    seen[sy][sx] = true;
     while (active.length) {
-      const idx = Math.random() < branching ? Math.floor(Math.random() * active.length) : active.length - 1;
+      const idx = rnd() < branching ? Math.floor(rnd() * active.length) : active.length - 1;
       const [x, y] = active[idx];
       const options = DIRS.filter((d) => {
         const nx = x + d.dx, ny = y + d.dy;
         return nx >= 0 && ny >= 0 && nx < w && ny < h && !seen[ny][nx];
       });
       if (!options.length) { active.splice(idx, 1); continue; }
-      const d = options[Math.floor(Math.random() * options.length)];
+      const d = options[Math.floor(rnd() * options.length)];
       const nx = x + d.dx, ny = y + d.dy;
       cells[y][x] &= ~d.bit;
       cells[ny][nx] &= ~d.opp;
       seen[ny][nx] = true;
       active.push([nx, ny]);
     }
-    // Exit = the cell farthest (by path) from the start.
-    const dist = cells.map((r) => r.map(() => -1));
-    const q = [[0, 0]];
-    dist[0][0] = 0;
-    let far = { x: 0, y: 0, d: 0 };
-    while (q.length) {
-      const [x, y] = q.shift();
-      for (const d of DIRS) {
-        if (cells[y][x] & d.bit) continue;
-        const nx = x + d.dx, ny = y + d.dy;
-        if (dist[ny][nx] !== -1) continue;
-        dist[ny][nx] = dist[y][x] + 1;
-        if (dist[ny][nx] > far.d) far = { x: nx, y: ny, d: dist[ny][nx] };
-        q.push([nx, ny]);
-      }
-    }
-    return { w, h, cells, start: { x: 0, y: 0 }, exit: { x: far.x, y: far.y }, pathLength: far.d };
+    const { start, exit, side } = pickEnds(cells, w, h, rnd);
+    const { routes } = addSecondRoute(cells, w, h, start, exit, rnd);
+    const lengths = routes.map((r) => r.length - 1);
+    return { w, h, cells, start, exit, side, routes, pathLength: Math.min(...lengths) };
   }
 
   function canMove(maze, x, y, dx, dy) {
@@ -149,7 +228,7 @@ const api = (function () {
     }
   }
 
-  return { generate, canMove, draw, N, E, S, W, DIRS };
+  return { generate, canMove, draw, bfs, N, E, S, W, DIRS };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = api;
 else root.GR_MAZE = api;

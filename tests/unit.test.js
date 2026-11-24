@@ -121,43 +121,77 @@ test("random (no target) audits are still valid", () => {
 // ---------------------------------------------------------------------------
 // Maze
 // ---------------------------------------------------------------------------
-function bfs(m) {
-  const dist = m.cells.map((r) => r.map(() => -1));
-  dist[0][0] = 0;
-  const q = [[0, 0]];
-  while (q.length) {
-    const [x, y] = q.shift();
+// All simple routes from start to exit (fine here: the maze has at most one loop).
+function simpleRoutes(m) {
+  const routes = [];
+  const seen = new Set([m.start.x + "," + m.start.y]);
+  (function walk(x, y, path) {
+    if (x === m.exit.x && y === m.exit.y) { routes.push(path.slice()); return; }
     for (const d of MAZE.DIRS) {
       if (!MAZE.canMove(m, x, y, d.dx, d.dy)) continue;
-      const nx = x + d.dx, ny = y + d.dy;
-      if (dist[ny][nx] === -1) { dist[ny][nx] = dist[y][x] + 1; q.push([nx, ny]); }
+      const nx = x + d.dx, ny = y + d.dy, k = nx + "," + ny;
+      if (seen.has(k)) continue;
+      seen.add(k); path.push(k);
+      walk(nx, ny, path);
+      seen.delete(k); path.pop();
     }
-  }
-  return dist;
+  })(m.start.x, m.start.y, [m.start.x + "," + m.start.y]);
+  return routes;
 }
 
-test("mazes are perfect (every cell reachable, exactly one route between cells)", () => {
-  for (const [w, h, b] of [[31, 19, 0.3], [9, 6, 0], [15, 15, 1], [40, 25, 0.5]]) {
-    for (let i = 0; i < 20; i++) {
+test("start and exit are on opposite boundary edges, and the ends vary", () => {
+  const sides = new Set(), starts = new Set();
+  for (let i = 0; i < 60; i++) {
+    const m = MAZE.generate(31, 19, 0.6);
+    const { start: s, exit: e, w, h } = m;
+    const opposite =
+      (s.x === 0 && e.x === w - 1) || (s.x === w - 1 && e.x === 0) ||
+      (s.y === 0 && e.y === h - 1) || (s.y === h - 1 && e.y === 0);
+    assert.ok(opposite, `start ${JSON.stringify(s)} and exit ${JSON.stringify(e)} must be on opposite edges`);
+    sides.add(m.side); starts.add(s.x + "," + s.y);
+  }
+  assert.equal(sides.size, 4, "all four directions occur");
+  assert.ok(starts.size > 20, "start positions vary");
+});
+
+test("every maze has exactly two routes of similar length, sharing as little as possible", () => {
+  for (const [w, h, b] of [[31, 19, 0.6], [31, 19, 0.3], [9, 6, 0.3], [21, 21, 0]]) {
+    for (let i = 0; i < 25; i++) {
       const m = MAZE.generate(w, h, b);
       let openings = 0;
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-        for (const d of MAZE.DIRS) {
-          const nx = x + d.dx, ny = y + d.dy;
-          const inside = nx >= 0 && ny >= 0 && nx < w && ny < h;
-          const open = !(m.cells[y][x] & d.bit);
-          if (!inside) { assert.ok(!open, "outer wall missing"); continue; }
-          assert.equal(open, !(m.cells[ny][nx] & d.opp), "walls must match on both sides");
-          if (open) openings++;
-        }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) for (const d of MAZE.DIRS) {
+        const nx = x + d.dx, ny = y + d.dy;
+        const inside = nx >= 0 && ny >= 0 && nx < w && ny < h;
+        const open = !(m.cells[y][x] & d.bit);
+        if (!inside) { assert.ok(!open, "outer wall missing"); continue; }
+        assert.equal(open, !(m.cells[ny][nx] & d.opp), "walls must match on both sides");
+        if (open) openings++;
       }
-      assert.equal(openings / 2, w * h - 1, "a perfect maze has w*h-1 passages");
-      const dist = bfs(m);
+      assert.equal(openings / 2, w * h, "a tree plus exactly one extra passage");
+      const dist = MAZE.bfs(m.cells, w, h, m.start).dist;
       assert.ok(dist.every((r) => r.every((v) => v >= 0)), "every cell reachable");
-      const max = Math.max(...dist.flat());
-      assert.equal(dist[m.exit.y][m.exit.x], max, "exit is the farthest cell");
-      assert.equal(m.pathLength, max);
+      const routes = simpleRoutes(m);
+      assert.equal(routes.length, 2, `${w}x${h}: exactly two solutions`);
+      const found = routes.map((r) => r.length - 1).sort((p, q) => p - q);
+      const reported = m.routes.map((r) => r.length - 1).sort((p, q) => p - q);
+      assert.deepEqual(found, reported, "the two routes are the ones the generator reports");
+      const [main, alt] = m.routes.map((r) => r.length - 1);
+      assert.ok(alt >= 0.9 * main && alt <= 1.3 * main, `second route ${alt} vs original ${main}: between 90% and 130%`);
+      assert.equal(m.pathLength, found[0], "pathLength is the shorter route");
     }
+  }
+});
+
+test("the second route keeps the maze as hard as before (shortest route not shortened)", () => {
+  // Compare the shortest route against the route the same maze had before the
+  // extra passage was opened: the generator reports both.
+  for (let i = 0; i < 40; i++) {
+    const m = MAZE.generate(31, 19, 0.6);
+    const [main, alt] = m.routes.map((r) => r.length - 1);
+    assert.ok(alt >= 0.9 * main, `second route ${alt} is not much shorter than the original ${main}`);
+    const shared = m.routes[1].filter((c) => m.routes[0].some((d) => d.x === c.x && d.y === c.y)).length;
+    // They always share the start and end stretches; the middle must split off.
+    assert.ok(shared / m.routes[0].length < 0.9, "the two routes are genuinely different");
   }
 });
 

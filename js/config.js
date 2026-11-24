@@ -8,7 +8,7 @@ window.GETAWAY_CONFIG = {
   // In each round the player earns one digit per correct audit, then finds a
   // mark (symbol) at the exit that decodes to one more digit.
   // Final code = [round 1 audit digits][round 1 mark][round 2 audit digits][round 2 mark] ...
-  rounds: 2,
+  rounds: 3,
   auditsPerRound: 4,
 
   // Fixed code instead of a random one (digits only, length must equal
@@ -21,7 +21,7 @@ window.GETAWAY_CONFIG = {
   mazeWidth: 31,
   mazeHeight: 19,
   // 0..1. Higher = more branches and dead ends (harder). 0 = long winding corridors.
-  mazeBranching: 0.3,
+  mazeBranching: 0.6,
 
   // ---- Audit popups ----
   // Seconds of maze time before each popup, drawn at random from this range
@@ -39,7 +39,7 @@ window.GETAWAY_CONFIG = {
   // Hitting a wall (one per key press) or turning back along your route (once per
   // retreat) is a route error. At the limit the current maze re-randomizes
   // (audit digits already earned are kept). 0 = no route penalties.
-  routeErrorLimit: 12,
+  routeErrorLimit: 10,
   penalizeWallHits: true,
   penalizeBacktracking: true,
 

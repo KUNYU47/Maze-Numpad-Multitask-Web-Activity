@@ -488,13 +488,20 @@
   }
 
   function renderEntry() {
+    // One row per leg, laid out like the register: 4 digits then the decoded mark.
     el.codeDisplay.innerHTML = "";
-    for (let i = 0; i < S.code.length; i++) {
-      const b = document.createElement("div");
-      const isMark = i % (PER + 1) === PER;
-      b.className = "cd-box" + (isMark ? " mark" : "") + (i === S.entry.length ? " cursor" : "");
-      b.textContent = S.entry[i] !== undefined ? S.entry[i] : "";
-      el.codeDisplay.appendChild(b);
+    for (let r = 0; r < ROUNDS; r++) {
+      const row = document.createElement("div");
+      row.className = "cd-row";
+      row.innerHTML = '<span class="cd-leg">L' + (r + 1) + "</span>";
+      for (let j = 0; j <= PER; j++) {
+        const i = r * (PER + 1) + j;
+        const b = document.createElement("div");
+        b.className = "cd-box" + (j === PER ? " mark" : "") + (i === S.entry.length ? " cursor" : "");
+        b.textContent = S.entry[i] !== undefined ? S.entry[i] : "";
+        row.appendChild(b);
+      }
+      el.codeDisplay.appendChild(row);
     }
   }
 
