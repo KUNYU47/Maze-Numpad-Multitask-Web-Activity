@@ -112,6 +112,7 @@ const screen = () => js(`({
 const methods = ["row", "numpad", "numlock-off", "click"];
 let methodIx = 0;
 const ruleCounts = {};
+const ruleSequence = [];
 
 async function waitMode(modes, ms = 20000) {
   const t0 = Date.now();
@@ -128,6 +129,7 @@ async function answerCorrectly() {
   const s = await screen();
   const ans = solveFromScreen(s.rule, s.digits);
   ruleCounts[s.rule] = (ruleCounts[s.rule] || 0) + 1;
+  ruleSequence.push(s.rule);
   check(typeof ans === "number", `rule "${s.rule}" on [${s.digits}] has a single answer (got ${ans})`);
   check(s.digits.length === 5, `audit shows 5 exhibits (got ${s.digits.length})`);
   const method = methods[methodIx++ % methods.length];
@@ -232,13 +234,35 @@ try {
   check((await js(`JSON.stringify(window.__GR().maze.cells)`)) !== mazeBefore, "a new maze is generated");
   check((await js("window.__GR().route.errors")) === 0, "route errors reset after the rescramble");
 
-  console.log("4. Stress: 60 more audits answered from the screen");
+  console.log("4. Stress: 64 more audits answered from the screen, rules dealt like a deck");
   await js(`window.confirm = () => true; document.getElementById("btn-reset").click(); document.getElementById("btn-begin").click()`);
-  for (let n = 0; n < 60; n++) {
+  ruleSequence.length = 0;
+  for (let n = 0; n < 64; n++) {
     await js(`(() => { const S = window.__GR(); S.earned[S.round].length = 0; S.sinceAudit = 1e9; })()`);
     if ((await waitMode(["audit"], 3000)) !== "audit") { check(false, "stress audit " + n + " appeared"); break; }
     while (await js("window.__GR().auditLocked")) await sleep(50);
     await answerCorrectly();
+  }
+
+  // The deck may be part-way through a cycle when this section starts, so find the
+  // offset where cycles begin; every full cycle after it must use all 8 rules once.
+  const aligned = [0, 1, 2, 3, 4, 5, 6, 7].find((o) => {
+    for (let k = o; k + 8 <= ruleSequence.length; k += 8) if (new Set(ruleSequence.slice(k, k + 8)).size !== 8) return false;
+    return new Set(ruleSequence.slice(0, o)).size === o; // the partial cycle before it has no repeats either
+  });
+  check(aligned !== undefined, "rules are dealt in full cycles with no repeats: " + ruleSequence.join(", "));
+
+  console.log("5. Popup pacing: gaps stay inside the configured range");
+  await js(`window.confirm = () => true; document.getElementById("btn-reset").click(); document.getElementById("btn-begin").click()`);
+  const range = [1.5, 3]; // demo-mode range set in js/app.js
+  for (let k = 0; k < 4; k++) { // 4 audits per leg
+    const t0 = Date.now();
+    if ((await waitMode(["audit"], 6000)) !== "audit") { check(false, "audit appeared: " + JSON.stringify(await js(`(() => { const S = window.__GR(); return { mode: S.mode, since: S.sinceAudit, next: S.nextAuditIn, earned: S.earned, round: S.round }; })()`))); break; }
+    const gap = (Date.now() - t0) / 1000;
+    check(gap >= range[0] - 0.15 && gap <= range[1] + 0.4, `gap ${gap.toFixed(2)} s is within ${range[0]}-${range[1]} s`);
+    while (await js("window.__GR().auditLocked")) await sleep(50);
+    await answerCorrectly();
+    if ((await js("window.__GR().mode")) !== "maze") break;
   }
 
   console.log("\nRules seen: " + JSON.stringify(ruleCounts));

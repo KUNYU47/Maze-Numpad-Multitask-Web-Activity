@@ -6,9 +6,8 @@
   if (DEMO) {
     CFG.mazeWidth = 9;
     CFG.mazeHeight = 6;
-    CFG.auditGraceSeconds = 1;
-    CFG.auditChanceRamp = 0.15;
-    CFG.auditMaxGapSeconds = 5;
+    CFG.auditGapSeconds = [1.5, 3];
+    CFG.rushGapSeconds = [0.5, 1];
   }
   const ROUNDS = Math.max(1, CFG.rounds | 0);
   const PER = Math.max(1, CFG.auditsPerRound | 0);
@@ -49,6 +48,11 @@
   const markIndex = (r) => r * (PER + 1) + PER;
   const auditIndex = (r, i) => r * (PER + 1) + i;
 
+  function isFixedCode() {
+    const fixed = CFG.fixedCode == null ? "" : String(CFG.fixedCode);
+    return /^\d+$/.test(fixed) && fixed.length === ROUNDS * (PER + 1);
+  }
+
   function buildCode() {
     const len = ROUNDS * (PER + 1);
     const fixed = CFG.fixedCode == null ? "" : String(CFG.fixedCode);
@@ -79,7 +83,7 @@
     const symbolFor = (digit) => Object.keys(caseKey).find((k) => caseKey[k] === digit);
     S = {
       mode: "intro",
-      code, caseKey,
+      code, caseKey, fixed: isFixedCode(),
       marks: Array.from({ length: ROUNDS }, (_, r) => symbolFor(code[markIndex(r)])),
       revealed: Array(ROUNDS).fill(false),
       earned: Array.from({ length: ROUNDS }, () => []),
@@ -114,6 +118,7 @@
     S.pos = { ...S.maze.start };
     S.trail = [{ ...S.maze.start }];
     S.sinceAudit = 0;
+    S.nextAuditIn = null;
     S.rush = false;
     S.route.reset();
     renderRouteMeter();
@@ -256,23 +261,28 @@
     toast("LEG 1 · TRACE ACTIVE · FOLLOW THE ROUTE", 2000);
   }
 
-  // Rising-chance popup: after a quiet period, the per-second chance of an
-  // audit grows linearly with time, so the gap is random and unpredictable.
+  // Even, unpredictable pacing: each gap is drawn at random from a range
+  // (e.g. 8-16 s), so audits are spread across the whole run with no slow start.
+  function nextGap() {
+    const g = S.rush ? CFG.rushGapSeconds : CFG.auditGapSeconds;
+    return (g[0] + Math.random() * (g[1] - g[0])) * 1000;
+  }
+
   function auditTick(dt) {
     if (roundDone()) return;
+    if (S.nextAuditIn == null) S.nextAuditIn = nextGap();
     S.sinceAudit += dt;
-    const grace = (S.rush ? Math.min(1, CFG.auditGraceSeconds) : CFG.auditGraceSeconds) * 1000;
-    const t = (S.sinceAudit - grace) / 1000;
-    if (t <= 0) return;
-    if (S.sinceAudit >= CFG.auditMaxGapSeconds * 1000) return openAudit();
-    const hazard = CFG.auditChanceRamp * (S.rush ? CFG.rushMultiplier : 1) * t; // chance per second
-    if (Math.random() < 1 - Math.exp(-hazard * (dt / 1000))) openAudit();
+    if (S.sinceAudit >= S.nextAuditIn) openAudit();
   }
 
   function openAudit() {
     S.mode = "audit";
     const i = S.earned[S.round].length;
-    S.audit = window.GR_AUDIT.make(S.code[auditIndex(S.round, i)], EXHIBITS);
+    const idx = auditIndex(S.round, i);
+    // With a random code, each audit is built first and its answer becomes that code
+    // digit, so every rule is always available. With a fixed code, the audit must hit it.
+    S.audit = window.GR_AUDIT.make(S.fixed ? S.code[idx] : null, EXHIBITS);
+    S.code[idx] = S.audit.answer;
     S.auditShownAt = performance.now();
     S.auditLocked = false;
     S.auditCount++;
@@ -327,6 +337,7 @@
   function closeAudit() {
     S.mode = "maze";
     S.sinceAudit = 0;
+    S.nextAuditIn = null;
     showOnly(null);
     el.freeze.classList.add("hidden");
     el.status.textContent = "TRACKING";
@@ -407,7 +418,11 @@
         const left = PER - S.earned[S.round].length;
         toast("EXIT SEALED · " + left + " AUDIT" + (left === 1 ? "" : "S") + " OUTSTANDING", 2600);
         window.GR_SOUND.sealed();
-        S.rush = true;
+        if (!S.rush) {
+          S.rush = true;
+          const quick = nextGap();
+          if (S.nextAuditIn == null || S.nextAuditIn - S.sinceAudit > quick) S.nextAuditIn = S.sinceAudit + quick;
+        }
       } else {
         reachExit();
       }

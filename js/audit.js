@@ -38,34 +38,81 @@
     return typeof c.note === "function" ? c.note(n) : c.note;
   }
 
+  // Every digit combination that gives a clear answer, per rule / size / answer (cached).
+  const tupleCache = {};
+  function validTuples(c, n, target) {
+    const key = c.id + "|" + n + "|" + target;
+    if (tupleCache[key]) return tupleCache[key];
+    const out = [];
+    const total = Math.pow(10, n);
+    for (let v = 0; v < total; v++) {
+      const d = String(v).padStart(n, "0").split("").map(Number);
+      const ans = c.solve(d);
+      if (ans !== null && (target === "any" || ans === target)) out.push(d);
+    }
+    return (tupleCache[key] = out);
+  }
+
+  // Rule deck: every rule is dealt once before any rule repeats. When the deck is
+  // empty it is refilled with all rules (never starting with the rule just used).
   function create(rng) {
     rng = rng || Math.random;
+    let deck = [];
     let lastId = null;
+
+    const shuffle = (arr) => arr.map((x) => [rng(), x]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+    const refill = () => { deck = CRITERIA.map((c) => c.id); };
 
     function randDigits(n) {
       return Array.from({ length: n }, () => Math.floor(rng() * 10));
     }
 
+    function tryRule(c, target, n) {
+      const hasTarget = target !== null && target !== undefined;
+      const build = (d) => ({ digits: d, criterion: c, answer: c.solve(d), note: noteFor(c, n) });
+      // Fast path: random sampling.
+      for (let i = 0; i < 2000; i++) {
+        const d = randDigits(n);
+        const ans = c.solve(d);
+        if (ans === null) continue;
+        if (hasTarget && ans !== target) continue;
+        return build(d);
+      }
+      // Rare combinations (e.g. "highest is 4" with 5 different digits): pick
+      // uniformly from every valid set of digits, or report that none exists.
+      const pool = validTuples(c, n, hasTarget ? target : "any");
+      return pool.length ? build(pool[Math.floor(rng() * pool.length)]) : null;
+    }
+
+    // Try the rules left in the deck (random order, the last-used rule last).
+    function dealFrom(ids, target, n) {
+      const order = shuffle(ids).sort((a, b) => (a === lastId) - (b === lastId));
+      for (const id of order) {
+        const a = tryRule(CRITERIA.find((c) => c.id === id), target, n);
+        if (a) return a;
+      }
+      return null;
+    }
+
+    // target: the digit the answer must equal, or null for any answer.
     // n = number of exhibits (odd numbers work best: 3 or 5).
     function make(target, n) {
       n = n || 3;
-      const hasTarget = target !== null && target !== undefined;
-      const order = CRITERIA.filter((c) => c.id !== lastId)
-        .map((c) => [rng(), c]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
-      for (const c of order) {
-        for (let i = 0; i < 3000; i++) {
-          const d = randDigits(n);
-          const ans = c.solve(d);
-          if (ans === null) continue;
-          if (hasTarget && ans !== target) continue;
-          lastId = c.id;
-          return { digits: d, criterion: c, answer: ans, note: noteFor(c, n) };
-        }
+      if (!deck.length) refill();
+      // With a fixed target some rules can't produce that digit (e.g. "highest" can't
+      // be 1 with 5 different digits); those stay in the deck for a later audit.
+      let a = dealFrom(deck, target, n);
+      if (!a) {
+        refill();
+        a = dealFrom(deck, target, n);
       }
-      throw new Error("Could not build an audit for target " + target + " with " + n + " exhibits");
+      if (!a) throw new Error("Could not build an audit for target " + target + " with " + n + " exhibits");
+      deck.splice(deck.indexOf(a.criterion.id), 1);
+      lastId = a.criterion.id;
+      return a;
     }
 
-    return { make };
+    return { make, deckLeft: () => deck.slice() };
   }
 
   const api = { CRITERIA, create, make: create().make };

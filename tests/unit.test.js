@@ -197,3 +197,39 @@ test("penalties can be switched off", () => {
   t.bump(false); t.step(false); t.step(true);
   assert.equal(t.errors, 0);
 });
+
+// ---------------------------------------------------------------------------
+// Rule deck: every rule is used once before any rule repeats
+// ---------------------------------------------------------------------------
+const RULE_IDS = AUDIT.CRITERIA.map((c) => c.id).sort();
+
+for (const n of [3, 5]) {
+  test(`with a free answer, every ${RULE_IDS.length} audits use each rule exactly once (${n} exhibits)`, () => {
+    const gen = AUDIT.create(seeded(1000 + n));
+    for (let cycle = 0; cycle < 100; cycle++) {
+      const ids = [];
+      for (let k = 0; k < RULE_IDS.length; k++) ids.push(gen.make(null, n).criterion.id);
+      assert.deepEqual([...ids].sort(), RULE_IDS, `cycle ${cycle}: ${ids}`);
+    }
+  });
+}
+
+test("with any target, a rule is only reused after the deck is refilled", () => {
+  const gen = AUDIT.create(seeded(5));
+  let last = null;
+  for (let i = 0; i < 3000; i++) {
+    const before = gen.deckLeft();
+    const target = Math.floor(i * 7.3) % 10;
+    const a = gen.make(target, 5);
+    const id = a.criterion.id;
+    if (before.includes(id)) {
+      assert.deepEqual(gen.deckLeft().sort(), before.filter((x) => x !== id).sort(), "used rule leaves the deck");
+    } else {
+      // only allowed when the deck was empty or nothing left in it could make this digit
+      const refilled = gen.deckLeft().sort();
+      assert.deepEqual(refilled, RULE_IDS.filter((x) => x !== id), "deck refilled with all rules except the one just used");
+    }
+    assert.notEqual(id, last, "same rule twice in a row");
+    last = id;
+  }
+});

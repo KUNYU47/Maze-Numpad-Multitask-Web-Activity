@@ -23,14 +23,12 @@ window.GETAWAY_CONFIG = {
   // 0..1. Higher = more branches and dead ends (harder). 0 = long winding corridors.
   mazeBranching: 0.3,
 
-  // ---- Audit popups (rising chance) ----
-  // After each audit there is a short quiet period. After that, the chance of a
-  // popup starts low and keeps rising every second until one fires.
-  auditGraceSeconds: 4,       // no popups for this long after an audit
-  auditChanceRamp: 0.004,     // how fast the per-second chance grows (higher = sooner)
-  auditMaxGapSeconds: 45,     // a popup is guaranteed by this point
-  // When the player reaches a sealed exit, the chance ramps this many times faster.
-  rushMultiplier: 40,
+  // ---- Audit popups ----
+  // Seconds of maze time before each popup, drawn at random from this range
+  // every time, so popups are unpredictable but evenly spread across the run.
+  auditGapSeconds: [8, 16],
+  // Gap used once the player reaches the exit before the leg's audits are done.
+  rushGapSeconds: [1, 2.5],
 
   // ---- Audit difficulty ----
   // Number of exhibit digits shown in each audit (3 or 5 recommended; odd numbers
