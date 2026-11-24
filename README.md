@@ -125,12 +125,13 @@ npm test
 
 ## Building the apps
 
-The release builds come from GitHub Actions (`.github/workflows/release.yml`): pushing a tag such as `v1.0.0` builds the Windows `.exe` on Windows and the macOS `.dmg` (universal: Intel and Apple silicon) on macOS, runs the unit tests, and publishes both on the Releases page.
+The release builds come from GitHub Actions (`.github/workflows/release.yml`): pushing a tag such as `v1.0.0` builds the Windows `.exe` on Windows and the macOS `.dmg` (universal: Intel and Apple silicon) on macOS, runs the unit tests, launches each built app to check the game starts (`tests/smoke-app.mjs`), and publishes both on the Releases page.
 
 To build locally (needs Node.js): `npm install`, then `npm run dist:win` (on Windows) or `npm run dist:mac` (on a Mac). Output goes to `dist/`. `npm start` runs the app without building.
 
 ## Changelog
 
+- **v1.0.1** macOS build no longer uses the hardened runtime with ad-hoc signing (that combination can stop the app from opening). The release workflow now launches each built app on Windows and macOS and checks the game starts before publishing.
 - **v1.0.0** First release: single-file Windows app and macOS app (no install needed), built and published by GitHub Actions. Facilitator setup panel behind the gear button (access code) with every setting, saved per computer; the game pauses while it's open. Full test run: 20 unit tests and 404 browser checks pass.
 
 - **v0.7** Three strikes now restart only the current leg (earlier legs kept; strikes count per leg). Each audit has a configurable clock (default 6 s); running out is a strike. Three practice audits with briefings and answer explanations before the official start (skippable). Case Closed stats show total strikes, timeouts and leg restarts.

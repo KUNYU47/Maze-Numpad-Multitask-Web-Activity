@@ -1,7 +1,7 @@
 {
   "name": "getaway-route",
   "productName": "The Getaway Route",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "PSY475 escape-room puzzle: The Getaway Route (task-switching maze)",
   "main": "electron/main.js",
@@ -32,7 +32,8 @@
       "target": [{ "target": "dmg", "arch": ["universal"] }],
       "category": "public.app-category.puzzle-games",
       "icon": "build/icon.png",
-      "identity": "-"
+      "identity": "-",
+      "hardenedRuntime": false
     },
     "dmg": { "artifactName": "Getaway-Route-${version}-macOS.dmg" }
   }

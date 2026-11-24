@@ -20,9 +20,11 @@ jobs:
           - os: windows-latest
             target: --win
             files: dist/*.exe
+            app: dist/win-unpacked/The Getaway Route.exe
           - os: macos-latest
             target: --mac
             files: dist/*.dmg
+            app: dist/mac-universal/The Getaway Route.app/Contents/MacOS/The Getaway Route
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +37,8 @@ jobs:
         run: node --test tests/unit.test.js
       - name: Build
         run: npx electron-builder ${{ matrix.target }} --publish never
+      - name: Launch check (the built app opens and the game starts)
+        run: node tests/smoke-app.mjs "${{ matrix.app }}"
       - uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.os }}
