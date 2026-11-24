@@ -34,6 +34,7 @@ window.GR_SOUND = (function () {
     correct() { tone(660, 0, 0.08, "triangle", 0.1); tone(990, 0.08, 0.14, "triangle", 0.1); },
     wrong() { tone(140, 0, 0.32, "sawtooth", 0.09); },
     key() { tone(1200, 0, 0.03, "square", 0.03); },
+    penalty() { tone(300, 0, 0.08, "sawtooth", 0.06); tone(200, 0.09, 0.12, "sawtooth", 0.06); },
     bump() { tone(90, 0, 0.06, "square", 0.04); },
     sealed() { tone(220, 0, 0.15, "square", 0.07); tone(180, 0.16, 0.2, "square", 0.07); },
     found() { [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.1, 0.16, "triangle", 0.09)); },

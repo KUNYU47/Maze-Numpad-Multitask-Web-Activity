@@ -47,10 +47,11 @@
                 <h1 class="term-title">THE GETAWAY ROUTE</h1>
                 <p>Detective, the suspect slipped out through the old service tunnels. Our tracer has picked up their route. <b>Guide the blip to the exit</b> to follow it.</p>
                 <p>Evidence Records will <b>interrupt you without warning</b> with an <b>EVIDENCE-ID AUDIT</b>. The trace freezes until you answer. Each correct answer prints one digit into the <b>CODE REGISTER</b>. <b>Three wrong answers and the mission is scrubbed.</b></p>
+                <p>Plan your route: <b>hitting a wall</b> or <b>doubling back</b> is a route error. Too many and the trail is lost and the maze <b>scrambles</b> (earned digits are kept).</p>
                 <p>The suspect switched routes once: there are <b><span id="intro-rounds">2</span> legs</b> to trace. At the end of each leg they left a <b>mark</b>. Decode the marks with the <b>OLD CASE KEY</b> to complete the case code.</p>
                 <div class="term-controls">
                   <span><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
-                  <span><kbd>0</kbd>&ndash;<kbd>9</kbd> or click the keypad to answer</span>
+                  <span><kbd>0</kbd>&ndash;<kbd>9</kbd> (top row or numpad) or click the keypad to answer</span>
                 </div>
                 <button id="btn-begin" class="key big orange">BEGIN TRACE</button>
               </div>
@@ -65,11 +66,7 @@
                   <span class="audit-strikes" id="audit-strikes"></span>
                   <span class="audit-num" id="audit-num">#01</span>
                 </div>
-                <div class="exhibits">
-                  <div class="exhibit"><div class="tag">EXHIBIT A</div><div class="digit" id="ex-0">0</div></div>
-                  <div class="exhibit"><div class="tag">EXHIBIT B</div><div class="digit" id="ex-1">0</div></div>
-                  <div class="exhibit"><div class="tag">EXHIBIT C</div><div class="digit" id="ex-2">0</div></div>
-                </div>
+                <div class="exhibits" id="exhibits"></div>
                 <div class="audit-rule">
                   <div class="rule-label">ENTER</div>
                   <div class="rule-text" id="audit-rule">THE HIGHEST DIGIT</div>
@@ -126,6 +123,7 @@
                   <tr><td>STRIKES</td><td id="st-errors">--</td></tr>
                   <tr><td>MEAN AUDIT RESPONSE</td><td id="st-rt">--</td></tr>
                   <tr><td>CODE ATTEMPTS</td><td id="st-attempts">--</td></tr>
+                  <tr><td>ROUTE ERRORS</td><td id="st-route">--</td></tr>
                 </table>
                 <button id="btn-again" class="key orange">OPEN NEW CASE</button>
               </div>
@@ -160,6 +158,11 @@
           <div class="panel-hint" id="register-hint">AUDIT DIGITS PRINT HERE</div>
         </div>
 
+        <div class="panel" id="route-panel">
+          <div class="panel-label">ROUTE ERRORS</div>
+          <div class="route-meter" id="route-meter"></div>
+        </div>
+
         <div class="panel casekey-panel">
           <div class="panel-label">OLD CASE KEY <span class="faded">&middot; ARCHIVE 1979</span></div>
           <div class="casekey" id="casekey"></div>
@@ -178,6 +181,7 @@
   <script src="js/sound.js"></script>
   <script src="js/maze.js"></script>
   <script src="js/audit.js"></script>
+  <script src="js/route.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

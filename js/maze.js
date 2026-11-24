@@ -1,5 +1,7 @@
-/* Maze generation (recursive backtracker) and canvas rendering. */
-window.GR_MAZE = (function () {
+/* Maze generation (growing tree) and canvas rendering.
+ * Works in the browser (window.GR_MAZE) and in Node (module.exports) for tests. */
+(function (root) {
+const api = (function () {
   // Wall bits
   const N = 1, E = 2, S = 4, W = 8;
   const DIRS = [
@@ -147,5 +149,8 @@ window.GR_MAZE = (function () {
     }
   }
 
-  return { generate, canMove, draw };
+  return { generate, canMove, draw, N, E, S, W, DIRS };
 })();
+if (typeof module !== "undefined" && module.exports) module.exports = api;
+else root.GR_MAZE = api;
+})(typeof window !== "undefined" ? window : globalThis);

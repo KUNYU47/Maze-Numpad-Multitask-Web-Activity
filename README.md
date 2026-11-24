@@ -20,17 +20,18 @@ A full mission takes about 5 minutes.
 
 1. Read the case briefing and press **BEGIN TRACE** (or Enter).
 2. Move the amber blip with the **arrow keys** or **WASD** from `IN` (top left) to the exit. The exit is hidden somewhere deep in the maze (always the spot farthest from the start).
-3. Without warning, an **Evidence-ID Audit** pops up and the maze freezes. Three exhibit digits are shown with a rule, for example *the highest digit*, *the right-most odd digit*, or *the digit that appears twice*. Type the answer or click the on-screen numpad.
+3. Without warning, an **Evidence-ID Audit** pops up and the maze freezes. Five exhibit digits are shown with a rule, for example *the highest digit*, *the right-most odd digit*, or *the digit that appears twice*. Type the answer on the top-row digits or the numpad (NumLock on or off), or click the on-screen keypad.
    - **Correct:** the digit is printed into the **Code Register** and the maze unfreezes.
    - **Wrong:** a **strike**, then a new audit. **Three strikes scrub the mission** and it restarts with a new code.
-4. Audits use a **rising chance**: right after an audit there is a short quiet period, then the chance of the next popup grows every second until one fires. Players can never tell when the next one is coming.
-5. The exit stays **sealed (LOCK)** until the leg's audit digits are collected. Standing at a sealed exit makes the remaining audits come much faster.
-6. The mission has **two legs** (two mazes). At each exit the suspect leaves a **mark** (symbol), which is logged in the register.
-7. After leg 2, enter the full **10-digit case code**: the register read left to right, top to bottom, replacing each mark with its number from the **Old Case Key**. The correct code shows **CASE CLOSED** and sends players to the **evidence desk**.
+4. **Route errors.** Hitting a wall (once per key press, holding a key doesn't count again) or doubling back along your route (once per retreat, however many steps) is a route error, shown on the **Route Errors** meter. At 12 errors the trail is lost: the maze for that leg **scrambles** into a new one and you restart from `IN`. Audit digits you've earned are kept.
+5. Audits use a **rising chance**: right after an audit there is a short quiet period, then the chance of the next popup grows every second until one fires. Players can never tell when the next one is coming.
+6. The exit stays **sealed (LOCK)** until the leg's audit digits are collected. Standing at a sealed exit makes the remaining audits come much faster.
+7. The mission has **two legs** (two mazes). At each exit the suspect leaves a **mark** (symbol), which is logged in the register.
+8. After leg 2, enter the full **10-digit case code**: the register read left to right, top to bottom, replacing each mark with its number from the **Old Case Key**. The correct code shows **CASE CLOSED** and sends players to the **evidence desk**.
 
 ![Final code entry](docs/final-code.png)
 
-Audit rules in the pool: highest, lowest, middle value, left-most even, right-most even, left-most odd, right-most odd, and the digit that appears twice. Zero counts as even. The same rule never appears twice in a row.
+Audit rules in the pool: highest, lowest, middle value (by size, not position: 2 digits are higher and 2 lower), left-most even, right-most even, left-most odd, right-most odd, and the digit that appears twice. Zero counts as even. Every audit has exactly one correct answer, and the same rule never appears twice in a row.
 
 ## Facilitator guide
 
@@ -47,6 +48,10 @@ All settings live in **`js/config.js`**. Edit, save, and reload the browser.
 | `auditChanceRamp` | `0.004` | How fast the popup chance rises (higher = sooner). Default averages roughly 25 s between audits. |
 | `auditMaxGapSeconds` | `45` | A popup is guaranteed by this point. |
 | `rushMultiplier` | `40` | How much faster audits come once a player waits at a sealed exit. |
+| `auditExhibits` | `5` | Digits shown per audit (3 or 5; odd numbers keep "middle value" possible). |
+| `routeErrorLimit` | `12` | Route errors before the maze scrambles. `0` turns route penalties off. |
+| `penalizeWallHits` | `true` | Wall hits count as route errors. |
+| `penalizeBacktracking` | `true` | Doubling back counts as a route error. |
 | `maxStrikes` | `3` | Wrong audit answers allowed before the mission is scrubbed. |
 | `caseKey` | see file | Symbol to digit mapping (each digit 0 to 9 once). |
 | `shuffleCaseKey` | `true` | Shuffle the key every run. |
@@ -58,13 +63,15 @@ All settings live in **`js/config.js`**. Edit, save, and reload the browser.
 
 **Rehearsal mode:** add `?demo` to the address (for example `index.html?demo`) for tiny mazes and audits every few seconds. A full run takes under a minute.
 
-**Data:** the Case Closed screen shows total time, audits cleared, strikes, mean audit response time, and code attempts. The same numbers (including every audit response time in ms and the code) are logged to the browser console (F12), which is handy for talking about switch costs in the debrief.
+**Data:** the Case Closed screen shows total time, audits cleared, strikes, mean audit response time, code attempts, and route errors (wall hits, doublings back, scrambles). The same numbers (including every audit response time in ms and the code) are logged to the browser console (F12), which is handy for talking about switch costs in the debrief.
 
 ## How it links to the course (task switching)
 
 - Players alternate between two tasks with different goals and response sets: spatial navigation (arrow keys) and numeric judgement (digit keys). Each audit forces a **switch** and a reconfiguration of the task set, and returning to the maze forces another.
 - Audits arrive with a **rising random chance** (a hazard function), so players cannot predict the switch. This removes the benefit of anticipatory preparation and makes switch costs larger, while the growing chance keeps tension building the longer they go without one.
 - **Strikes** raise the stakes of each switch, so players must balance speed against accuracy.
+- **Five exhibits** instead of three raise the working-memory and visual-search load of each audit, which makes the switch more costly.
+- **Route errors** push players to plan the route ahead (goal maintenance) instead of trial and error, so an interruption mid-plan hurts more.
 - The audit **rule changes every time** (never the same rule twice in a row), so even within the audit task players must update which rule is active, adding a second layer of switching.
 - The frozen maze means players must hold their place in memory and **re-orient** after each interruption, a classic resumption cost after task interruption.
 - The final step requires integrating information from both tasks (register digits plus the decoded mark).
@@ -78,13 +85,29 @@ js/config.js             Facilitator settings
 js/app.js                Game flow: maze, audits, exit, final code
 js/maze.js               Maze generation (growing tree, far exit) and CRT rendering
 js/audit.js              Audit question generator
+js/route.js              Route-error tracker (wall hits, doubling back)
 js/symbols.js            SVG glyphs for the Old Case Key
 js/sound.js              Synthesized sound effects (Web Audio)
 Start Getaway Route.bat  Windows launcher
+Run Tests.bat            Runs all tests (Windows)
+tests/unit.test.js       Unit tests: audit rules, generator, maze, route errors
+tests/e2e.mjs            End-to-end test in headless Edge/Chrome with real key presses
 docs/                    Screenshots for this README
 ```
 
+## Tests
+
+Needs [Node.js](https://nodejs.org) 22 or newer. The end-to-end test also needs Microsoft Edge or Google Chrome (Edge comes with Windows). Double-click **`Run Tests.bat`**, or run:
+
+```
+npm test
+```
+
+- **Unit tests** check every audit rule against an independently written answer key for **every** possible 3-digit and 5-digit combination, check that generated audits always have the intended answer, that mazes are always solvable with the exit at the farthest point, and the route-error rules.
+- **End-to-end test** opens the real page in a hidden browser and plays it with real key presses. It reads the exhibits and rule off the screen, solves them independently, and answers using the top-row digits, the numpad with NumLock on, the numpad with NumLock off, and mouse clicks. It also checks strikes, mission failure, the final code, wall hits, doubling back, and the maze scramble, then runs 60 more audits as a stress test.
+
 ## Changelog
 
+- **v0.3** Fixed: numpad answers were ignored when NumLock was off (the keys send End/ArrowDown/PageDown instead of digits), which made correct answers look undetected. Audits now show 5 exhibits; "middle value" note now says it means by size, not position. New route errors for wall hits and doubling back; too many scrambles the leg's maze. Added unit and end-to-end tests.
 - **v0.2** Random code every run; two legs (10-digit code, two marks); bigger 31×19 maze with more branching and the exit at the farthest point; rising-chance audit popups; three-strike rule that scrubs the mission; Case Closed clue points to the evidence desk; audit clock no longer depends on animation frames.
 - **v0.1** First playable version: random maze, random-interval audits with frozen maze, code register, sealed exit, Old Case Key symbol decoding, final code entry, Case Closed stats, Windows launcher.

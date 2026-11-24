@@ -1,0 +1,10 @@
+{
+  "name": "getaway-route",
+  "private": true,
+  "description": "PSY475 escape-room puzzle: The Getaway Route (task-switching maze)",
+  "scripts": {
+    "test": "node --test tests/unit.test.js && node tests/e2e.mjs",
+    "test:unit": "node --test tests/unit.test.js",
+    "test:e2e": "node tests/e2e.mjs"
+  }
+}

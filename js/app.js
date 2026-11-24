@@ -13,6 +13,8 @@
   const ROUNDS = Math.max(1, CFG.rounds | 0);
   const PER = Math.max(1, CFG.auditsPerRound | 0);
   const MAX_STRIKES = Math.max(1, CFG.maxStrikes | 0);
+  const EXHIBITS = Math.max(3, (CFG.auditExhibits | 0) || 3);
+  const ROUTE_LIMIT = Math.max(0, CFG.routeErrorLimit | 0);
 
   const $ = (id) => document.getElementById(id);
 
@@ -30,8 +32,16 @@
     exitHead: $("exit-head"), markLabel: $("mark-label"), exitSymbol: $("exit-symbol"),
     roundEnd: $("round-end"), roundEndText: $("round-end-text"), codeEntry: $("code-entry"),
     codeDisplay: $("code-display"), finalPad: $("final-pad"), finalFeedback: $("final-feedback"),
-    successMsg: $("success-msg"), failMsg: $("fail-msg")
+    successMsg: $("success-msg"), failMsg: $("fail-msg"),
+    exhibits: $("exhibits"), routeMeter: $("route-meter"), routePanel: $("route-panel")
   };
+  // Exhibit cards (A, B, C, ...)
+  el.exhibits.style.gridTemplateColumns = "repeat(" + EXHIBITS + ", 1fr)";
+  el.exhibits.classList.toggle("many", EXHIBITS > 3);
+  el.exhibits.innerHTML = Array.from({ length: EXHIBITS }, (_, i) =>
+    '<div class="exhibit"><div class="tag">EXHIBIT ' + String.fromCharCode(65 + i) + '</div><div class="digit" id="ex-' + i + '">0</div></div>'
+  ).join("");
+  el.routePanel.classList.toggle("hidden", ROUTE_LIMIT === 0);
   $("intro-rounds").textContent = ROUNDS;
 
   // ---------- STATE ----------
@@ -79,7 +89,10 @@
       strikes: 0,
       startedAt: null, endedAt: null,
       audit: null, auditShownAt: 0, auditLocked: false, auditCount: 0,
-      stats: { rts: [], attempts: 0 },
+      stats: { rts: [], attempts: 0, wallHits: 0, backtracks: 0, rescrambles: 0 },
+      route: window.GR_ROUTE.createTracker({
+        limit: ROUTE_LIMIT, wallHits: CFG.penalizeWallHits !== false, backtracks: CFG.penalizeBacktracking !== false
+      }),
       entry: [],
       toastTimer: null
     };
@@ -92,6 +105,8 @@
     el.status.textContent = "STANDBY";
     el.timer.textContent = "00:00";
     el.freeze.classList.add("hidden");
+    el.freeze.textContent = "TRACE FROZEN";
+    crt.classList.remove("static");
   }
 
   function startRoundMaze() {
@@ -100,6 +115,8 @@
     S.trail = [{ ...S.maze.start }];
     S.sinceAudit = 0;
     S.rush = false;
+    S.route.reset();
+    renderRouteMeter();
     el.roundLcd.textContent = S.round + 1 + "/" + ROUNDS;
   }
 
@@ -152,6 +169,22 @@
     for (let i = 0; i < MAX_STRIKES; i++) html += '<span class="strike' + (i < S.strikes ? " hit" : "") + '">&times;</span>';
     el.strikes.innerHTML = html;
     el.auditStrikes.innerHTML = "STRIKES " + html;
+  }
+
+  function renderRouteMeter(flash) {
+    if (!ROUTE_LIMIT) return;
+    let html = "";
+    for (let i = 0; i < ROUTE_LIMIT; i++) {
+      const hit = i < S.route.errors;
+      const danger = hit && S.route.errors >= ROUTE_LIMIT - 2;
+      html += '<span class="seg' + (hit ? " hit" : "") + (danger ? " danger" : "") + '"></span>';
+    }
+    el.routeMeter.innerHTML = html;
+    if (flash) {
+      el.routePanel.classList.remove("flash");
+      void el.routePanel.offsetWidth;
+      el.routePanel.classList.add("flash");
+    }
   }
 
   function setLamps() {
@@ -230,14 +263,14 @@
   function openAudit() {
     S.mode = "audit";
     const i = S.earned[S.round].length;
-    S.audit = window.GR_AUDIT.make(S.code[auditIndex(S.round, i)]);
+    S.audit = window.GR_AUDIT.make(S.code[auditIndex(S.round, i)], EXHIBITS);
     S.auditShownAt = performance.now();
     S.auditLocked = false;
     S.auditCount++;
     el.auditNum.textContent = "L" + (S.round + 1) + " · " + (i + 1) + "/" + PER;
     S.audit.digits.forEach((d, k) => ($("ex-" + k).textContent = d));
     el.auditRule.textContent = S.audit.criterion.text;
-    el.auditNote.textContent = S.audit.criterion.note ? "(" + S.audit.criterion.note + ")" : "";
+    el.auditNote.textContent = S.audit.note ? "(" + S.audit.note + ")" : "";
     el.auditFeedback.textContent = "AWAITING INPUT_";
     el.auditFeedback.className = "audit-feedback";
     el.freeze.classList.remove("hidden");
@@ -309,14 +342,57 @@
 
   const atExit = () => S.pos.x === S.maze.exit.x && S.pos.y === S.maze.exit.y;
 
-  function move(dx, dy) {
+  // Route penalties: wall hits and turning back add route errors. Too many and
+  // the suspect's trail is lost: the current leg's maze is re-randomized.
+  function routePenalty(res) {
+    if (!res.kind) return false;
+    if (res.kind === "wall") S.stats.wallHits++;
+    else S.stats.backtracks++;
+    renderRouteMeter(true);
+    window.GR_SOUND.penalty();
+    if (res.exceeded) { rescramble(); return true; }
+    const left = res.limit - res.errors;
+    toast("ROUTE ERROR \u00b7 " + (res.kind === "wall" ? "WALL CONTACT" : "DOUBLED BACK") + " \u00b7 " + left + " LEFT", 1400);
+    return false;
+  }
+
+  function rescramble() {
+    S.mode = "scramble";
+    S.stats.rescrambles++;
+    el.freeze.textContent = "SIGNAL LOST \u00b7 RE-ACQUIRING";
+    el.freeze.classList.remove("hidden");
+    el.status.textContent = "SIGNAL LOST";
+    crt.classList.add("static");
+    toast("TOO MANY ROUTE ERRORS \u00b7 TRAIL SCRAMBLED", 2400);
+    window.GR_SOUND.sealed();
+    setLamps();
+    setTimeout(() => {
+      if (S.mode !== "scramble") return;
+      crt.classList.remove("static");
+      el.freeze.classList.add("hidden");
+      el.freeze.textContent = "TRACE FROZEN";
+      startRoundMaze();
+      S.mode = "maze";
+      el.status.textContent = "TRACKING";
+      setLamps();
+      toast("NEW ROUTE ACQUIRED \u00b7 AUDIT DIGITS KEPT", 2000);
+    }, 1600);
+  }
+
+  function move(dx, dy, repeat) {
     if (S.mode !== "maze") return;
     const { x, y } = S.pos;
-    if (!window.GR_MAZE.canMove(S.maze, x, y, dx, dy)) { window.GR_SOUND.bump(); return; }
+    if (!window.GR_MAZE.canMove(S.maze, x, y, dx, dy)) {
+      window.GR_SOUND.bump();
+      routePenalty(S.route.bump(!!repeat));
+      return;
+    }
     S.pos = { x: x + dx, y: y + dy };
     const prev = S.trail[S.trail.length - 2];
-    if (prev && prev.x === S.pos.x && prev.y === S.pos.y) S.trail.pop();
+    const backtrack = !!(prev && prev.x === S.pos.x && prev.y === S.pos.y);
+    if (backtrack) S.trail.pop();
     else S.trail.push({ ...S.pos });
+    if (routePenalty(S.route.step(backtrack))) return;
     if (atExit()) {
       if (!roundDone()) {
         const left = PER - S.earned[S.round].length;
@@ -416,6 +492,7 @@
     $("st-errors").textContent = S.strikes + " / " + MAX_STRIKES;
     $("st-rt").textContent = rts.length ? (rts.reduce((a, b) => a + b, 0) / rts.length / 1000).toFixed(2) + " s" : "--";
     $("st-attempts").textContent = S.stats.attempts;
+    $("st-route").textContent = S.stats.wallHits + " wall \u00b7 " + S.stats.backtracks + " back \u00b7 " + S.stats.rescrambles + " scrambles";
     el.successMsg.textContent = CFG.successMessage || "";
     renderRegister();
     showOnly("closed");
@@ -424,7 +501,8 @@
     window.GR_SOUND.win();
     console.log("[GetawayRoute] case closed", {
       timeMs: Math.round(S.endedAt - S.startedAt), code: S.code.join(""), auditRTsMs: rts.map(Math.round),
-      strikes: S.strikes, attempts: S.stats.attempts
+      strikes: S.strikes, attempts: S.stats.attempts,
+      wallHits: S.stats.wallHits, backtracks: S.stats.backtracks, rescrambles: S.stats.rescrambles
     });
   }
 
@@ -434,19 +512,28 @@
     w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0], W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0]
   };
 
+  // Digit from either the top row or the numpad. Uses e.code so the numpad works
+  // even when NumLock is off (then e.key is "End", "ArrowDown", "PageDown", ...).
+  function digitFrom(e) {
+    const m = /^(?:Digit|Numpad)([0-9])$/.exec(e.code || "");
+    if (m) return m[1];
+    return /^[0-9]$/.test(e.key) ? e.key : null;
+  }
+
   document.addEventListener("keydown", (e) => {
+    const digit = digitFrom(e);
     if (e.ctrlKey && e.shiftKey && (e.key === "N" || e.key === "n")) { e.preventDefault(); newCase(); return; }
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    if (S.mode === "maze" && MOVES[e.key]) {
+    if (S.mode === "maze" && MOVES[e.key] && !/^Numpad/.test(e.code || "")) {
       e.preventDefault();
-      move(MOVES[e.key][0], MOVES[e.key][1]);
-    } else if (S.mode === "audit" && /^[0-9]$/.test(e.key)) {
+      move(MOVES[e.key][0], MOVES[e.key][1], e.repeat);
+    } else if (S.mode === "audit" && digit !== null) {
       e.preventDefault();
-      answerAudit(e.key);
+      if (!e.repeat) answerAudit(digit);
     } else if (S.mode === "exit" && S.round < ROUNDS - 1) {
       if (e.key === "Enter") { e.preventDefault(); nextRound(); }
     } else if (S.mode === "exit") {
-      if (/^[0-9]$/.test(e.key)) { e.preventDefault(); pressFinal(e.key); }
+      if (digit !== null) { e.preventDefault(); if (!e.repeat) pressFinal(digit); }
       else if (e.key === "Backspace") { e.preventDefault(); pressFinal("DEL"); }
       else if (e.key === "Delete" || e.key === "Escape") { e.preventDefault(); pressFinal("CLR"); }
       else if (e.key === "Enter") { e.preventDefault(); pressFinal("ENT"); }

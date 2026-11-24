@@ -32,6 +32,19 @@ window.GETAWAY_CONFIG = {
   // When the player reaches a sealed exit, the chance ramps this many times faster.
   rushMultiplier: 40,
 
+  // ---- Audit difficulty ----
+  // Number of exhibit digits shown in each audit (3 or 5 recommended; odd numbers
+  // keep the "middle value" rule possible).
+  auditExhibits: 5,
+
+  // ---- Route penalties ----
+  // Hitting a wall (one per key press) or turning back along your route (once per
+  // retreat) is a route error. At the limit the current maze re-randomizes
+  // (audit digits already earned are kept). 0 = no route penalties.
+  routeErrorLimit: 12,
+  penalizeWallHits: true,
+  penalizeBacktracking: true,
+
   // ---- Stakes ----
   // Wrong audit answers allowed. Reaching this many fails the mission.
   maxStrikes: 3,
