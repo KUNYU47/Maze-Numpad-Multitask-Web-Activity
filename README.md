@@ -57,7 +57,7 @@ All settings live in **`js/config.js`**. Edit, save, and reload the browser.
 | `shuffleCaseKey` | `true` | Shuffle the key every run. |
 | `successMessage` | evidence desk clue | Text on the Case Closed screen. |
 | `failMessage` | see file | Text on the Mission Scrubbed screen. |
-| `sound` | `true` | Sound effects on at start (toggle with the SOUND button). |
+| `sound` | `true` | Sound effects (alarms, answers, button clicks) on at start. Toggle with the SOUND button. |
 
 **Between groups:** press **NEW CASE** (or `Ctrl+Shift+N`) for a fresh mission.
 
@@ -108,6 +108,7 @@ npm test
 
 ## Changelog
 
+- **v0.3.1** Button sound effects: a crisp click for keypad keys (on-screen or keyboard) and a heavier latch sound for console buttons.
 - **v0.3** Fixed: numpad answers were ignored when NumLock was off (the keys send End/ArrowDown/PageDown instead of digits), which made correct answers look undetected. Audits now show 5 exhibits; "middle value" note now says it means by size, not position. New route errors for wall hits and doubling back; too many scrambles the leg's maze. Added unit and end-to-end tests.
 - **v0.2** Random code every run; two legs (10-digit code, two marks); bigger 31×19 maze with more branching and the exit at the farthest point; rising-chance audit popups; three-strike rule that scrubs the mission; Case Closed clue points to the evidence desk; audit clock no longer depends on animation frames.
 - **v0.1** First playable version: random maze, random-interval audits with frozen maze, code register, sealed exit, Old Case Key symbol decoding, final code entry, Case Closed stats, Windows launcher.

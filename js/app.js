@@ -225,7 +225,16 @@
     if (!b) return;
     b.classList.add("pressed");
     setTimeout(() => b.classList.remove("pressed"), 120);
+    window.GR_SOUND.click();
   }
+
+  // Console buttons (everything except keypad keys, which click via flashKey).
+  document.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest && e.target.closest(".key");
+    if (!b || b.classList.contains("pad-key")) return;
+    window.GR_SOUND.unlock();
+    window.GR_SOUND.press();
+  });
 
   // ---------- SIZING ----------
   function resize() {
@@ -455,7 +464,6 @@
   function pressFinal(k) {
     if (S.mode !== "exit" || S.round !== ROUNDS - 1) return;
     flashKey(el.finalPad, k);
-    window.GR_SOUND.key();
     if (k === "CLR") S.entry = [];
     else if (k === "DEL") S.entry.pop();
     else if (k === "ENT") return submitFinal();
