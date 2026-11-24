@@ -9,7 +9,7 @@ Styled in **Cassette Futurism**: beige plastic housings, a green-phosphor CRT, c
 Get the latest build from the [Releases page](https://github.com/KUNYU47/Maze-Numpad-Multitask-Web-Activity/releases/latest). Each is a single app with nothing to install.
 
 - **Windows 10/11:** download `Getaway-Route-<version>-Windows.exe` and double-click it. The app isn't code-signed, so if SmartScreen says "Windows protected your PC", click **More info**, then **Run anyway**.
-- **macOS 11+ (Intel and Apple silicon):** download `Getaway-Route-<version>-macOS.dmg`, open it, and drag **The Getaway Route** to Applications. The app isn't notarized by Apple, so the first time **right-click the app, choose Open, then Open again**. If macOS says the app is damaged, run `xattr -cr "/Applications/The Getaway Route.app"` in Terminal once.
+- **macOS 10.15 Catalina or newer (Intel and Apple silicon):** download `Getaway-Route-<version>-macOS.dmg`, open it, and drag **The Getaway Route** to Applications. The app isn't notarized by Apple, so the first time **right-click the app, choose Open, then Open again**. If macOS says the app is damaged, run `xattr -cr "/Applications/The Getaway Route.app"` in Terminal once.
 
 Press **F11** in the app for full screen.
 
@@ -131,7 +131,7 @@ To build locally (needs Node.js): `npm install`, then `npm run dist:win` (on Win
 
 ## Changelog
 
-- **v1.0.1** macOS build no longer uses the hardened runtime with ad-hoc signing (that combination can stop the app from opening). The release workflow now launches each built app on Windows and macOS and checks the game starts before publishing.
+- **v1.0.1** Runs on macOS 10.15 Catalina and newer: the app now uses Electron 32, the last version that supports Catalina (the release workflow checks the built app's minimum macOS version and that it contains both Intel and Apple silicon code). macOS build no longer uses the hardened runtime with ad-hoc signing (that combination can stop the app from opening). The release workflow now launches each built app on Windows and macOS and checks the game starts before publishing.
 - **v1.0.0** First release: single-file Windows app and macOS app (no install needed), built and published by GitHub Actions. Facilitator setup panel behind the gear button (access code) with every setting, saved per computer; the game pauses while it's open. Full test run: 20 unit tests and 404 browser checks pass.
 
 - **v0.7** Three strikes now restart only the current leg (earlier legs kept; strikes count per leg). Each audit has a configurable clock (default 6 s); running out is a strike. Three practice audits with briefings and answer explanations before the official start (skippable). Case Closed stats show total strikes, timeouts and leg restarts.

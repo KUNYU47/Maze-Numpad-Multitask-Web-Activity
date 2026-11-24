@@ -5,7 +5,7 @@
 | System | File | How to run |
 | --- | --- | --- |
 | Windows 10/11 (64-bit) | `Getaway-Route-<version>-Windows.exe` | Double-click it. Nothing to install. If SmartScreen says "Windows protected your PC", click **More info**, then **Run anyway** (the app isn't code-signed). |
-| macOS 11+ (Intel and Apple silicon) | `Getaway-Route-<version>-macOS.dmg` | Open the .dmg and drag **The Getaway Route** to Applications (or run it from the .dmg). The first time, **right-click the app and choose Open**, then **Open** again (the app isn't notarized by Apple). If macOS says the app is damaged, run `xattr -cr "/Applications/The Getaway Route.app"` in Terminal once. |
+| macOS 10.15 Catalina or newer (Intel and Apple silicon) | `Getaway-Route-<version>-macOS.dmg` | Open the .dmg and drag **The Getaway Route** to Applications (or run it from the .dmg). The first time, **right-click the app and choose Open**, then **Open** again (the app isn't notarized by Apple). If macOS says the app is damaged, run `xattr -cr "/Applications/The Getaway Route.app"` in Terminal once. |
 
 Press **F11** in the app for full screen.
 

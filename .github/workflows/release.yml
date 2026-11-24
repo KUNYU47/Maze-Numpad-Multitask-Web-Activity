@@ -39,6 +39,16 @@ jobs:
         run: npx electron-builder ${{ matrix.target }} --publish never
       - name: Launch check (the built app opens and the game starts)
         run: node tests/smoke-app.mjs "${{ matrix.app }}"
+      - name: macOS compatibility check (Catalina 10.15+, Intel and Apple silicon)
+        if: runner.os == 'macOS'
+        run: |
+          APP="dist/mac-universal/The Getaway Route.app"
+          MIN=$(/usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$APP/Contents/Info.plist")
+          ARCHS=$(lipo -archs "$APP/Contents/MacOS/The Getaway Route")
+          FW_MIN=$(/usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$APP/Contents/Frameworks/Electron Framework.framework/Resources/Info.plist" 2>/dev/null || echo "n/a")
+          echo "App minimum macOS: $MIN | framework minimum: $FW_MIN | architectures: $ARCHS"
+          [ "$MIN" = "10.15" ] || [ "$MIN" = "10.15.0" ] || { echo "App does not allow macOS 10.15"; exit 1; }
+          echo "$ARCHS" | grep -q x86_64 && echo "$ARCHS" | grep -q arm64 || { echo "Not a universal app"; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.os }}
