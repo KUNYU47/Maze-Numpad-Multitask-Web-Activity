@@ -237,6 +237,7 @@
   document.addEventListener("pointerdown", (e) => {
     const b = e.target.closest && e.target.closest(".key");
     if (!b || b.classList.contains("pad-key")) return;
+    if (["btn-begin", "btn-next-round", "btn-retry"].includes(b.id)) return; // these play the PLAY-key sound
     window.GR_SOUND.unlock();
     window.GR_SOUND.press();
   });
@@ -252,6 +253,7 @@
   // ---------- FLOW ----------
   function begin() {
     window.GR_SOUND.unlock();
+    window.GR_SOUND.play();
     S.mode = "maze";
     S.startedAt = performance.now();
     showOnly(null);
@@ -403,15 +405,15 @@
     if (S.mode !== "maze") return;
     const { x, y } = S.pos;
     if (!window.GR_MAZE.canMove(S.maze, x, y, dx, dy)) {
-      window.GR_SOUND.bump();
+      if (!repeat) window.GR_SOUND.bump();
       routePenalty(S.route.bump(!!repeat));
       return;
     }
     S.pos = { x: x + dx, y: y + dy };
     const prev = S.trail[S.trail.length - 2];
     const backtrack = !!(prev && prev.x === S.pos.x && prev.y === S.pos.y);
-    if (backtrack) S.trail.pop();
-    else S.trail.push({ ...S.pos });
+    if (backtrack) { S.trail.pop(); window.GR_SOUND.stepBack(); }
+    else { S.trail.push({ ...S.pos }); window.GR_SOUND.step(); }
     if (routePenalty(S.route.step(backtrack))) return;
     if (atExit()) {
       if (!roundDone()) {
@@ -456,6 +458,7 @@
   function nextRound() {
     if (S.mode !== "exit" || S.round >= ROUNDS - 1) return;
     S.round++;
+    window.GR_SOUND.play();
     startRoundMaze();
     S.mode = "maze";
     showOnly(null);

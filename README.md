@@ -109,6 +109,7 @@ npm test
 
 ## Changelog
 
+- **v0.4.1** Tape-deck sounds: buttons now make a cassette-deck "ka-chunk" (plastic snap, latch thunk, spring ring, then the key popping back up); BEGIN and NEXT LEG sound like pressing PLAY with the motor spinning up. Maze moves tick like a tape counter (lower tick when doubling back) and wall hits thump. The end-to-end test now also fails on any page error.
 - **v0.4** Audit rules are dealt like a deck (each rule once before any repeats). With a random code, each audit is built first and its answer becomes the code digit, so every rule is always available. Popups now come after an even random gap (8 to 16 s) instead of a rising chance, so there is no slow start. Tests cover both.
 - **v0.3.1** Button sound effects: a crisp click for keypad keys (on-screen or keyboard) and a heavier latch sound for console buttons.
 - **v0.3** Fixed: numpad answers were ignored when NumLock was off (the keys send End/ArrowDown/PageDown instead of digits), which made correct answers look undetected. Audits now show 5 exhibits; "middle value" note now says it means by size, not position. New route errors for wall hits and doubling back; too many scrambles the leg's maze. Added unit and end-to-end tests.

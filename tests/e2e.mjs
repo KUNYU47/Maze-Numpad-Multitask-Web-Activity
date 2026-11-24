@@ -28,7 +28,7 @@ const PORT = 9300 + Math.floor(Math.random() * 400);
 const profile = mkdtempSync(join(tmpdir(), "gr-e2e-"));
 const browser = spawn(browserPath, [
   "--headless=new", `--remote-debugging-port=${PORT}`, "--window-size=1366,768",
-  `--user-data-dir=${profile}`, "--no-first-run", "--allow-file-access-from-files", "about:blank"
+  `--user-data-dir=${profile}`, "--no-first-run", "--autoplay-policy=no-user-gesture-required", "--allow-file-access-from-files", "about:blank"
 ]);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const watchdog = setTimeout(() => {
@@ -51,8 +51,10 @@ const ws = new WebSocket(targets.find((t) => t.type === "page").webSocketDebugge
 await new Promise((r) => ws.addEventListener("open", r));
 let nextId = 0;
 const pending = new Map();
+const pageErrors = [];
 ws.addEventListener("message", (e) => {
   const m = JSON.parse(e.data);
+  if (m.method === "Runtime.exceptionThrown") pageErrors.push(m.params.exceptionDetails?.exception?.description || m.params.exceptionDetails?.text);
   if (pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
 });
 const send = (method, params = {}) => new Promise((r) => { const id = ++nextId; pending.set(id, r); ws.send(JSON.stringify({ id, method, params })); });
@@ -170,6 +172,7 @@ async function playLeg() {
 
 try {
   await send("Page.enable");
+  await send("Runtime.enable");
   await send("Page.navigate", { url: pageUrl });
   await sleep(1200);
 
@@ -265,6 +268,7 @@ try {
     if ((await js("window.__GR().mode")) !== "maze") break;
   }
 
+  check(pageErrors.length === 0, "no errors in the page (sound, input, drawing): " + pageErrors.slice(0, 3).join(" | "));
   console.log("\nRules seen: " + JSON.stringify(ruleCounts));
 } catch (err) {
   failures++;
