@@ -131,7 +131,6 @@ window.GR_SOUND = (function () {
     click() { tapeKey(0.7); setTimeout(() => tapeRelease(0.6), 90); },          // keypad keys
     press() { tapeKey(1); setTimeout(() => tapeRelease(0.9), 140); },           // console buttons
     play() { tapeKey(1.15); motorSpin(0.03, 0.6); },                            // BEGIN / next leg
-    key() { tapeKey(0.6); },
 
     // Maze movement: soft tick, like a tape counter wheel advancing one notch.
     step() {
@@ -155,7 +154,6 @@ window.GR_SOUND = (function () {
     },
     // New exhibits after a wrong answer: short double chirp.
     reissue() { tone(1400, 0, 0.05, "square", 0.06); tone(1050, 0.07, 0.07, "square", 0.06); },
-    alarm() { tone(880, 0, 0.12, "square"); tone(660, 0.14, 0.12, "square"); tone(880, 0.28, 0.14, "square"); },
     correct() { tone(660, 0, 0.08, "triangle", 0.1); tone(990, 0.08, 0.14, "triangle", 0.1); },
     wrong() { tone(140, 0, 0.32, "sawtooth", 0.09); },
     // Route error (wall hit / doubling back): loud static burst, a dropping buzz,

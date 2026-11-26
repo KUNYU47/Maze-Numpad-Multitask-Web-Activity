@@ -26,7 +26,7 @@
   const el = {
     intro: $("intro"), audit: $("audit"), exitpanel: $("exitpanel"), closed: $("closed"), failed: $("failed"),
     freeze: $("freeze-stamp"), toast: $("crt-toast"), status: $("crt-status"),
-    timer: $("timer"), roundLcd: $("round-lcd"), strikes: $("strikes"), auditStrikes: $("audit-strikes"),
+    caseTimer: $("timer"), roundLcd: $("round-lcd"), strikes: $("strikes"), auditStrikes: $("audit-strikes"),
     register: $("register"), regHint: $("register-hint"), casekey: $("casekey"),
     lampTrack: $("lamp-track"), lampAudit: $("lamp-audit"), lampExit: $("lamp-exit"),
     auditNum: $("audit-num"), auditRuleLabel: document.querySelector("#audit .rule-label"), auditRule: $("audit-rule"), auditNote: $("audit-note"),
@@ -36,7 +36,7 @@
     codeDisplay: $("code-display"), finalPad: $("final-pad"), finalFeedback: $("final-feedback"),
     successMsg: $("success-msg"), failMsg: $("fail-msg"),
     exhibits: $("exhibits"), routeMeter: $("route-meter"), routePanel: $("route-panel"),
-    ready: $("ready"), timer: $("audit-timer"), timerFill: $("audit-timer-fill"), timerText: $("audit-timer-text"),
+    ready: $("ready"), clock: $("audit-timer"), clockFill: $("audit-timer-fill"), clockText: $("audit-timer-text"),
     auditTitle: $("audit-title"), failStamp: $("fail-stamp"), btnRetry: $("btn-retry")
   };
   // Rules text that depends on settings
@@ -59,18 +59,16 @@
   const markIndex = (r) => r * (PER + 1) + PER;
   const auditIndex = (r, i) => r * (PER + 1) + i;
 
-  function isFixedCode() {
-    const fixed = CFG.fixedCode == null ? "" : String(CFG.fixedCode);
-    return /^\d+$/.test(fixed) && fixed.length === ROUNDS * (PER + 1);
-  }
+  // The facilitator's fixed code as digits, or null for a random code.
+  const CODE_LEN = ROUNDS * (PER + 1);
+  const FIXED_CODE = (() => {
+    const f = CFG.fixedCode == null ? "" : String(CFG.fixedCode);
+    if (/^\d+$/.test(f) && f.length === CODE_LEN) return f.split("").map(Number);
+    if (f) console.warn("[GetawayRoute] fixedCode must be " + CODE_LEN + " digits; using a random code.");
+    return null;
+  })();
 
-  function buildCode() {
-    const len = ROUNDS * (PER + 1);
-    const fixed = CFG.fixedCode == null ? "" : String(CFG.fixedCode);
-    if (/^\d+$/.test(fixed) && fixed.length === len) return fixed.split("").map(Number);
-    if (fixed) console.warn("[GetawayRoute] fixedCode must be " + len + " digits; using a random code.");
-    return Array.from({ length: len }, () => Math.floor(Math.random() * 10));
-  }
+  const buildCode = () => FIXED_CODE ? FIXED_CODE.slice() : Array.from({ length: CODE_LEN }, () => Math.floor(Math.random() * 10));
 
   function buildCaseKey() {
     let names = Object.keys(CFG.caseKey || {}).filter((k) => window.GR_SYMBOLS.names.includes(k));
@@ -94,7 +92,7 @@
     const symbolFor = (digit) => Object.keys(caseKey).find((k) => caseKey[k] === digit);
     S = {
       mode: "intro",
-      code, caseKey, fixed: isFixedCode(),
+      code, caseKey,
       marks: Array.from({ length: ROUNDS }, (_, r) => symbolFor(code[markIndex(r)])),
       revealed: Array(ROUNDS).fill(false),
       earned: Array.from({ length: ROUNDS }, () => []),
@@ -107,8 +105,8 @@
       sinceAudit: 0, rush: false,
       strikes: 0,
       startedAt: null, endedAt: null,
-      audit: null, auditShownAt: 0, auditLocked: false, auditCount: 0,
-      stats: { rts: [], attempts: 0, wallHits: 0, backtracks: 0, rescrambles: 0, strikes: 0, timeouts: 0, legRestarts: 0 },
+      audit: null, auditShownAt: 0, auditLocked: false,
+      stats: { attempts: 0, wallHits: 0, backtracks: 0, rescrambles: 0, strikes: 0, timeouts: 0, legRestarts: 0 },
       // For the Case Closed charts: time per leg (start to exit, including restarts)
       // and every audit played (practice not included).
       legStartedAt: null, legMs: [], legRestarts: Array(ROUNDS).fill(0), auditLog: [],
@@ -127,7 +125,7 @@
     showOnly("intro");
     setLamps();
     el.status.textContent = "STANDBY";
-    el.timer.textContent = "00:00";
+    el.caseTimer.textContent = "00:00";
     el.freeze.classList.add("hidden");
     el.freeze.textContent = "TRACE FROZEN";
     crt.classList.remove("static");
@@ -311,11 +309,10 @@
     const idx = auditIndex(S.round, i);
     // With a random code, each audit is built first and its answer becomes that code
     // digit, so every rule is always available. With a fixed code, the audit must hit it.
-    S.audit = window.GR_AUDIT.make(S.fixed ? S.code[idx] : null, EXHIBITS);
+    S.audit = window.GR_AUDIT.make(FIXED_CODE ? S.code[idx] : null, EXHIBITS);
     S.code[idx] = S.audit.answer;
     S.auditShownAt = performance.now();
     S.auditLocked = false;
-    S.auditCount++;
     const overwriting = S.earned[S.round][i] !== undefined;
     const slotName = "A" + String(i + 1).padStart(2, "0");
     el.auditNum.textContent = "L" + (S.round + 1) + " \u00b7 " + slotName;
@@ -348,7 +345,7 @@
     el.auditFeedback.className = "audit-feedback";
     S.auditShownAt = performance.now();
     S.auditDeadline = timed && AUDIT_LIMIT ? S.auditShownAt + AUDIT_LIMIT * 1000 : null;
-    el.timer.classList.toggle("hidden", !S.auditDeadline);
+    el.clock.classList.toggle("hidden", !S.auditDeadline);
     updateClock(S.auditShownAt);
     showOnly("audit");
     el.audit.classList.remove("pop");
@@ -359,9 +356,9 @@
   function updateClock(now) {
     if (!S.auditDeadline) return;
     const left = Math.max(0, S.auditDeadline - now);
-    el.timerFill.style.width = (100 * left) / (AUDIT_LIMIT * 1000) + "%";
-    el.timerText.textContent = (left / 1000).toFixed(1);
-    el.timer.classList.toggle("low", left < 2000);
+    el.clockFill.style.width = (100 * left) / (AUDIT_LIMIT * 1000) + "%";
+    el.clockText.textContent = (left / 1000).toFixed(1);
+    el.clock.classList.toggle("low", left < 2000);
   }
 
   // Runs every tick: drains the audit clock and handles running out of time.
@@ -394,7 +391,6 @@
     S.auditLocked = true;
     logAudit(v === S.audit.answer ? "correct" : "wrong", v);
     if (v === S.audit.answer) {
-      S.stats.rts.push(performance.now() - S.auditShownAt);
       const slot = S.auditSlot;
       const old = S.earned[S.round][slot];
       S.earned[S.round][slot] = v;
@@ -655,33 +651,33 @@
     setTimeout(renderEntry, 500);
   }
 
-  function renderCharts() {
+  function renderCharts(sum) {
     const C = window.GR_CHARTS;
     $("chart-legs").innerHTML = C.legChart(S.legMs, S.legRestarts, { width: 380, height: 128 });
     $("chart-audits").innerHTML = C.auditChart(S.auditLog, { width: 380, height: 128, limitSec: AUDIT_LIMIT });
-    const sum = C.auditSummary(S.auditLog);
     $("chart-audit-count").textContent = "\u00b7 " + sum.total + " PLAYED \u00b7 " + sum.correct + " RIGHT \u00b7 " + sum.wrong + " WRONG \u00b7 " + sum.timeout + " TIMED OUT";
   }
 
   function closeCase() {
     S.mode = "closed";
     S.endedAt = performance.now();
-    const rts = S.stats.rts;
+    const sum = window.GR_CHARTS.auditSummary(S.auditLog);
     $("st-time").textContent = fmtTime(S.endedAt - S.startedAt);
-    $("st-audits").textContent = rts.length;
+    $("st-audits").textContent = sum.correct + " of " + sum.total;
     $("st-errors").textContent = S.stats.strikes + " (" + S.stats.timeouts + " timed out) \u00b7 " + S.stats.legRestarts + " leg restart" + (S.stats.legRestarts === 1 ? "" : "s");
-    $("st-rt").textContent = rts.length ? (rts.reduce((a, b) => a + b, 0) / rts.length / 1000).toFixed(2) + " s" : "--";
+    $("st-rt").textContent = sum.correct ? (sum.meanCorrectMs / 1000).toFixed(2) + " s" : "--";
     $("st-attempts").textContent = S.stats.attempts;
     $("st-route").textContent = S.stats.wallHits + " wall \u00b7 " + S.stats.backtracks + " back \u00b7 " + S.stats.rescrambles + " scrambles";
     el.successMsg.textContent = CFG.successMessage || "";
-    renderCharts();
+    renderCharts(sum);
     renderRegister();
     showOnly("closed");
     el.status.textContent = "CASE CLOSED";
     setLamps();
     window.GR_SOUND.win();
     console.log("[GetawayRoute] case closed", {
-      timeMs: Math.round(S.endedAt - S.startedAt), code: S.code.join(""), auditRTsMs: rts.map(Math.round),
+      timeMs: Math.round(S.endedAt - S.startedAt), code: S.code.join(""), legMs: S.legMs.map(Math.round),
+      audits: S.auditLog.map((a) => ({ leg: a.leg, ms: Math.round(a.ms), verdict: a.verdict })),
       strikes: S.stats.strikes, timeouts: S.stats.timeouts, legRestarts: S.stats.legRestarts, attempts: S.stats.attempts,
       wallHits: S.stats.wallHits, backtracks: S.stats.backtracks, rescrambles: S.stats.rescrambles
     });
@@ -808,6 +804,9 @@
     const away = now - S.pausedAt;
     if (S.auditDeadline) S.auditDeadline += away;
     S.auditShownAt += away;
+    // the case timer and leg time don't count the pause either
+    if (S.startedAt) S.startedAt += away;
+    if (S.legStartedAt) S.legStartedAt += away;
     S.paused = false;
   });
 
@@ -845,7 +844,7 @@
   }, 50);
 
   function frame(now) {
-    if (S.startedAt && S.mode !== "closed" && S.mode !== "failed") el.timer.textContent = fmtTime(now - S.startedAt);
+    if (S.startedAt && S.mode !== "closed") el.caseTimer.textContent = fmtTime(now - S.startedAt);
     window.GR_MAZE.draw(canvas, S.maze, {
       pos: S.pos, trail: S.trail,
       frozen: S.mode !== "maze",

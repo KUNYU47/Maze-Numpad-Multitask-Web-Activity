@@ -331,7 +331,11 @@ try {
   const limit = await js("window.GETAWAY_CONFIG.auditTimeLimitSeconds");
   const shownBar = await js(`!document.getElementById("audit-timer").classList.contains("hidden")`);
   check(shownBar, "the countdown bar is visible");
-  await sleep(limit * 1000 - 1200);
+  await sleep(1500);
+  const bar = await js(`({ fill: !!document.querySelector("#audit-timer #audit-timer-fill"), width: parseFloat(document.getElementById("audit-timer-fill").style.width), caseTimer: document.getElementById("timer").textContent })`);
+  check(bar.fill && bar.width > 0 && bar.width < 100, "the countdown bar drains (" + bar.width + "% left)");
+  check(/^\d\d:\d\d$/.test(bar.caseTimer) && bar.caseTimer !== "00:00", "the case timer is running (" + bar.caseTimer + ")");
+  await sleep(limit * 1000 - 2700);
   check((await js("window.__GR().strikes")) === 0, "no strike before the time is up");
   await sleep(1600);
   check((await js("window.__GR().strikes")) === 1, "a strike when the time runs out");

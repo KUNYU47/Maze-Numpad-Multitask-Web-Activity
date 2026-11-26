@@ -136,6 +136,7 @@ To build locally (needs Node.js): `npm install`, then `npm run dist:win` (on Win
 
 ## Changelog
 
+- **v1.0.6** Code review. Fixed: the case timer on the side panel stayed at 00:00, and the audit countdown bar could stop drawing (both used the same internal name, so each overwrote the other). The setup panel now pauses the case timer and leg times too. Cleanup: one audit record feeds the stats and charts (removed duplicate counters), the fixed-code check lives in one place, unused sounds removed, and duplicate style rules merged. Case Closed shows "audits correct: X of Y".
 - **v1.0.5** The solve-time-per-leg chart is now a line chart.
 - **v1.0.4** Reaching the exit before a leg's audits are done now brings the remaining audits back to back (0.3 s apart) instead of every 1 to 2.5 s.
 - **v1.0.3** Case Closed screen adds two charts: solve time per leg, and time per audit (every audit played, coloured and marked by outcome, with the total played). Stats now sit in a compact strip above the charts.
