@@ -151,7 +151,11 @@ const api = (function () {
     const ox = Math.floor((W_ - cs * maze.w) / 2);
     const oy = Math.floor((H_ - cs * maze.h) / 2);
     const frozen = state.frozen;
-    const green = frozen ? "rgba(120,200,150,0.35)" : "#7dffa0";
+    // Route-error alert: walls flash red and fade back to green over ~1 s.
+    const alert = Math.max(0, Math.min(1, state.alert || 0));
+    const mix = (a, b) => Math.round(a + (b - a) * alert);
+    const green = frozen ? "rgba(120,200,150,0.35)"
+      : "rgb(" + mix(125, 255) + "," + mix(255, 60) + "," + mix(160, 45) + ")";
 
     // faint grid
     ctx.strokeStyle = "rgba(125,255,160,0.06)";
@@ -197,7 +201,7 @@ const api = (function () {
     ctx.strokeStyle = green;
     ctx.lineWidth = Math.max(2, Math.round(cs * 0.09));
     ctx.lineCap = "square";
-    ctx.shadowColor = frozen ? "transparent" : "rgba(125,255,160,0.8)";
+    ctx.shadowColor = frozen ? "transparent" : alert > 0 ? "rgba(255,60,45,0.9)" : "rgba(125,255,160,0.8)";
     ctx.shadowBlur = 8 * dpr;
     ctx.beginPath();
     for (let y = 0; y < maze.h; y++) {

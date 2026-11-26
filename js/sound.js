@@ -158,7 +158,15 @@ window.GR_SOUND = (function () {
     alarm() { tone(880, 0, 0.12, "square"); tone(660, 0.14, 0.12, "square"); tone(880, 0.28, 0.14, "square"); },
     correct() { tone(660, 0, 0.08, "triangle", 0.1); tone(990, 0.08, 0.14, "triangle", 0.1); },
     wrong() { tone(140, 0, 0.32, "sawtooth", 0.09); },
-    penalty() { tone(300, 0, 0.08, "sawtooth", 0.06); tone(200, 0.09, 0.12, "sawtooth", 0.06); },
+    // Route error (wall hit / doubling back): loud static burst, a dropping buzz,
+    // and a two-tone warning, like a tracer losing its signal.
+    penalty() {
+      noise(0, 0.28, 2200, 1.2, "bandpass", 0.6);
+      noise(0, 0.12, 180, 1.4, "lowpass", 1);
+      tone(150, 0, 0.35, "sawtooth", 0.28, 55);
+      tone(880, 0.02, 0.09, "square", 0.16);
+      tone(587, 0.13, 0.13, "square", 0.16);
+    },
     sealed() { tone(220, 0, 0.15, "square", 0.07); tone(180, 0.16, 0.2, "square", 0.07); },
     found() { [523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.1, 0.16, "triangle", 0.09)); },
     win() { [392, 523, 659, 784, 1046].forEach((f, i) => tone(f, i * 0.12, 0.25, "triangle", 0.1)); }

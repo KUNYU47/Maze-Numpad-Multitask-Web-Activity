@@ -130,8 +130,14 @@ async function waitMode(modes, ms = 20000) {
   return null;
 }
 
+// New exhibits ignore input for a moment (so keys meant for old exhibits don't count).
+async function waitReady() {
+  for (let k = 0; k < 100 && !(await js("performance.now() >= (window.__GR().inputReadyAt || 0)")); k++) await sleep(25);
+}
+
 // Answer the audit that is on screen correctly, via the next input method.
 async function answerCorrectly() {
+  await waitReady();
   const s = await screen();
   const ans = solveFromScreen(s.rule, s.digits);
   ruleCounts[s.rule] = (ruleCounts[s.rule] || 0) + 1;
@@ -183,7 +189,11 @@ try {
   await send("Page.navigate", { url: pageUrl });
   await sleep(1200);
 
-  const fresh = () => js(`window.confirm = () => true; document.getElementById("btn-reset").click(); document.getElementById("btn-begin").click()`);
+  // A fresh case on the test page (no practice), whatever the previous section left open.
+  const fresh = async () => {
+    if (!(await js("location.search.includes('skippractice')"))) { await send("Page.navigate", { url: pageUrl }); await sleep(1000); }
+    await js(`window.confirm = () => true; document.getElementById("btn-reset").click(); document.getElementById("btn-begin").click()`);
+  };
 
   if (want(1)) {
   console.log("1. Full mission with every input method");
@@ -226,6 +236,7 @@ try {
     while (await js("window.__GR().auditLocked")) await sleep(80);
     const s = await screen();
     const wrong = (solveFromScreen(s.rule, s.digits) + 1) % 10;
+    await waitReady();
     await enterDigit(wrong, methods[k % methods.length]);
     await sleep(150);
     check((await js("window.__GR().strikes")) === k, `strike ${k} recorded`);
@@ -252,6 +263,10 @@ try {
   await arrow(wallDir);
   await sleep(50);
   check((await js("window.__GR().route.errors")) === 1, "a wall hit is a route error");
+  const fx = await js(`({ glitch: document.getElementById("crt").classList.contains("glitch"), shake: document.querySelector(".crt-housing").classList.contains("shake-hard"), red: window.__GR().alertUntil > performance.now() })`);
+  check(fx.glitch && fx.shake && fx.red, "a route error glitches the screen, shakes the console and turns the walls red: " + JSON.stringify(fx));
+  await sleep(1100);
+  check(!(await js(`document.getElementById("crt").classList.contains("glitch")`)) && !(await js("window.__GR().alertUntil > performance.now()")), "the alarm effects clear after about a second");
   await send("Input.dispatchKeyEvent", { type: "rawKeyDown", key: wallDir, code: wallDir, windowsVirtualKeyCode: ARROWS[wallDir], autoRepeat: true });
   await sleep(50);
   check((await js("window.__GR().route.errors")) === 1, "holding a key against a wall is not counted again");
@@ -347,6 +362,45 @@ try {
   await press("Enter", "Enter", 13, "\r");
   await sleep(200);
   check((await js("window.__GR().mode")) === "maze", "Enter begins the official trace");
+  }
+
+  if (want(9)) {
+  console.log("9. Answer timing: a key meant for the old exhibits never counts against the new ones");
+  // Real bug: after a wrong answer the old exhibits stayed on screen until the new
+  // audit swapped in. A player who then typed the right answer for what they could
+  // see was judged against the NEW exhibits they hadn't seen yet: a false strike.
+  await fresh();
+  let tried = 0;
+  for (let round = 0; round < 6 && tried < 3; round++) {
+    if ((await waitMode(["audit"], 8000)) !== "audit") break;
+    while (await js("window.__GR().auditLocked")) await sleep(30);
+    const s = await screen();
+    const oldAns = solveFromScreen(s.rule, s.digits);
+    const strikes0 = await js("window.__GR().strikes");
+    if (strikes0 >= 2) break;
+    await waitReady();
+    await enterDigit((oldAns + 1) % 10, "row"); // wrong on purpose
+    await sleep(120);
+    const marked = await js(`({ closed: document.getElementById("exhibits").classList.contains("resolved"), answer: [...document.querySelectorAll("#exhibits .exhibit.answer .digit")].map(e => e.textContent), why: document.getElementById("audit-feedback").textContent })`);
+    check(marked.closed && marked.answer.length >= 1 && marked.answer.every((d) => Number(d) === oldAns), `after a miss the old exhibits are closed and the right one (${oldAns}) is highlighted: ${JSON.stringify(marked.answer)}`);
+    check(new RegExp("ANSWER: " + oldAns).test(marked.why), "the feedback states the right answer and why");
+    // wait for the new exhibits, then immediately type the OLD answer, like a player reacting to the stale screen
+    const oldDigits = JSON.stringify(s.digits);
+    for (let k = 0; k < 400 && (await js("JSON.stringify(window.__GR().audit.digits)")) === oldDigits; k++) await sleep(10);
+    const newAns = await js("window.__GR().audit.answer");
+    if (newAns === oldAns) { await waitReady(); await enterDigit(newAns, "row"); await sleep(800); continue; }
+    await enterDigit(oldAns, "numpad");
+    await sleep(60);
+    tried++;
+    check((await js("window.__GR().strikes")) === strikes0 + 1, `a key pressed right as new exhibits appear is not judged against them (strikes ${await js("window.__GR().strikes")}, expected ${strikes0 + 1})`);
+    // and the new audit still accepts its correct answer afterwards
+    await sleep(500);
+    await enterDigit(newAns, "click");
+    await sleep(150);
+    check((await js("window.__GR().strikes")) === strikes0 + 1 && (await js("window.__GR().auditLocked")), "the correct answer for the new exhibits is accepted");
+    await waitMode(["maze"], 3000);
+  }
+  check(tried > 0, "the timing case was exercised");
   }
 
   // The access code is not stored in this public repo: set GR_SETUP_CODE to run section 8.

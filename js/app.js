@@ -326,8 +326,18 @@
   }
 
   // Fill the audit device with an audit and (optionally) start its clock.
+  // Input is ignored for a moment after new exhibits appear, so a key the player
+  // meant for the previous exhibits is never judged against ones they haven't seen.
+  const INPUT_GRACE_MS = 400;
+
   function showAuditCard(a, timed) {
-    a.digits.forEach((d, k) => ($("ex-" + k).textContent = d));
+    S.inputReadyAt = performance.now() + INPUT_GRACE_MS;
+    el.exhibits.classList.remove("resolved");
+    a.digits.forEach((d, k) => {
+      const box = $("ex-" + k);
+      box.textContent = d;
+      box.parentNode.classList.remove("answer");
+    });
     el.auditRule.textContent = a.criterion.text;
     el.auditNote.textContent = a.note ? "(" + a.note + ")" : "";
     el.auditFeedback.textContent = "AWAITING INPUT_";
@@ -359,11 +369,25 @@
     else if (S.mode === "practice") practiceAnswer(null);
   }
 
+  // After a miss, mark the old exhibits as closed and point at the right one.
+  function resolveExhibits(a) {
+    el.exhibits.classList.add("resolved");
+    a.digits.forEach((d, k) => $("ex-" + k).parentNode.classList.toggle("answer", d === a.answer));
+  }
+
+  // Every audit verdict is logged to the console (F12) to help check reports.
+  function logAudit(verdict, pressed) {
+    const a = S.audit;
+    console.log("[GetawayRoute] audit", verdict, { rule: a.criterion.id, exhibits: a.digits.join(""), answer: a.answer, pressed, ms: Math.round(performance.now() - S.auditShownAt) });
+  }
+
   function answerAudit(k) {
     if (S.mode !== "audit" || S.auditLocked) return;
+    if (performance.now() < (S.inputReadyAt || 0)) return; // too soon: meant for the previous exhibits
     const v = Number(k);
     flashKey(el.auditPad, k);
     S.auditLocked = true;
+    logAudit(v === S.audit.answer ? "correct" : "wrong", v);
     if (v === S.audit.answer) {
       S.stats.rts.push(performance.now() - S.auditShownAt);
       const slot = S.auditSlot;
@@ -393,15 +417,18 @@
     device.classList.add("shake");
     window.GR_SOUND.wrong();
     const what = kind === "timeout" ? "TIME'S UP" : "MISMATCH";
+    if (kind === "timeout") logAudit("timeout", null);
+    resolveExhibits(S.audit);
     el.auditFeedback.className = "audit-feedback bad";
+    const why = '<div class="why">ANSWER: ' + S.audit.answer + ". " + window.GR_AUDIT.explain(S.audit) + "</div>";
     if (S.strikes >= MAX_STRIKES) {
-      el.auditFeedback.textContent = what + " \u00b7 STRIKE " + S.strikes + " \u00b7 LEG SCRUBBED";
-      setTimeout(() => { device.classList.remove("shake"); failLeg(); }, 1100);
+      el.auditFeedback.innerHTML = "<div>" + what + " \u00b7 STRIKE " + S.strikes + " \u00b7 LEG SCRUBBED</div>" + why;
+      setTimeout(() => { device.classList.remove("shake"); failLeg(); }, 2200);
       return;
     }
     const left = MAX_STRIKES - S.strikes;
-    el.auditFeedback.textContent = what + " \u00b7 STRIKE " + S.strikes + " \u00b7 " + left + " LEFT";
-    setTimeout(() => { device.classList.remove("shake"); if (S.mode === "audit") openAudit(true); }, 1100);
+    el.auditFeedback.innerHTML = "<div>" + what + " \u00b7 STRIKE " + S.strikes + " \u00b7 " + left + " LEFT</div>" + why;
+    setTimeout(() => { device.classList.remove("shake"); if (S.mode === "audit") openAudit(true); }, 2200);
   }
 
   function closeAudit() {
@@ -461,10 +488,23 @@
     else S.stats.backtracks++;
     renderRouteMeter(true);
     window.GR_SOUND.penalty();
+    routeAlarm();
     if (res.exceeded) { rescramble(); return true; }
     const left = res.limit - res.errors;
     toast("ROUTE ERROR \u00b7 " + (res.kind === "wall" ? "WALL CONTACT" : "DOUBLED BACK") + " \u00b7 " + left + " LEFT", 1400);
     return false;
+  }
+
+  // Visual alarm: maze lines flash red (~1 s), the screen glitches and the console shakes.
+  function routeAlarm() {
+    S.alertUntil = performance.now() + 1000;
+    const housing = crt.closest(".crt-housing");
+    [crt, housing].forEach((n) => n.classList.remove("glitch", "shake-hard"));
+    void crt.offsetWidth;
+    crt.classList.add("glitch");
+    housing.classList.add("shake-hard");
+    clearTimeout(S.alarmTimer);
+    S.alarmTimer = setTimeout(() => { crt.classList.remove("glitch"); housing.classList.remove("shake-hard"); }, 600);
   }
 
   function rescramble() {
@@ -792,6 +832,7 @@
     window.GR_MAZE.draw(canvas, S.maze, {
       pos: S.pos, trail: S.trail,
       frozen: S.mode !== "maze",
+      alert: S.alertUntil ? (S.alertUntil - now) / 1000 : 0,
       exitSealed: !roundDone()
     }, now);
     requestAnimationFrame(frame);
