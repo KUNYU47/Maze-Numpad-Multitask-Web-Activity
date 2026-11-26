@@ -80,6 +80,7 @@
       }
       // Rare combinations (e.g. "highest is 4" with 5 different digits): pick
       // uniformly from every valid set of digits, or report that none exists.
+      if (n > 6) return null; // too many combinations to list: leave this rule for a later audit
       const pool = validTuples(c, n, hasTarget ? target : "any");
       return pool.length ? build(pool[Math.floor(rng() * pool.length)]) : null;
     }

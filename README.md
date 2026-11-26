@@ -11,7 +11,7 @@ Get the latest build from the [Releases page](https://github.com/KUNYU47/Maze-Nu
 - **Windows 10/11:** download `Getaway-Route-<version>-Windows.exe` and double-click it. The app isn't code-signed, so if SmartScreen says "Windows protected your PC", click **More info**, then **Run anyway**.
 - **macOS 10.15 Catalina or newer (Intel and Apple silicon):** download `Getaway-Route-<version>-macOS.dmg`, open it, and drag **The Getaway Route** to Applications. The app isn't notarized by Apple, so the first time **right-click the app, choose Open, then Open again**. If macOS says the app is damaged, run `xattr -cr "/Applications/The Getaway Route.app"` in Terminal once.
 
-Press **F11** in the app for full screen.
+Press **F11** in the app for full screen. Press **Esc** during play to pause (the maze is hidden and every clock stops).
 
 **Without the app:** the game is plain HTML/CSS/JavaScript. Double-click `index.html` (or `Start Getaway Route.bat` on Windows) to play it in a browser.
 
@@ -29,7 +29,7 @@ A full mission takes about 5 minutes.
 4. **Route errors.** Each one sets off an alarm: the screen glitches, the console shakes, the maze walls flash red and a loud static alarm sounds. Hitting a wall (once per key press, holding a key doesn't count again) or doubling back along your route (once per retreat, however many steps) is a route error, shown on the **Route Errors** meter. At 10 errors the trail is lost: the maze for that leg **scrambles** into a new one and you restart from `IN`. Audit digits you've earned are kept.
 5. Audits are **evenly paced but unpredictable**: after each audit, the next one comes after a fresh random gap of 8 to 16 seconds of maze time. There is no slow start and no build-up, yet players can never tell exactly when the next one is coming.
 6. The exit stays **sealed (LOCK)** until the leg's 4 slots have been filled once. If you reach it early, the remaining audits come **back to back** (a 0.3 s pause between them) so you can finish the leg quickly.
-7. The mission has **three legs** (three mazes). At each exit the suspect leaves a **mark** (symbol), which is logged in the register.
+7. The mission has **three legs** (three mazes), and **each leg is harder**: the maze is 15% bigger in each direction (31×25, then 36×29, then 41×33) and each audit shows one more exhibit (5, then 6, then 7). At each exit the suspect leaves a **mark** (symbol), which is logged in the register.
 8. After the last leg, enter the full **15-digit case code** (one row per leg, laid out like the register): the register read left to right, top to bottom, replacing each mark with its number from the **Old Case Key**. The correct code shows **CASE CLOSED** and sends players to the **evidence desk**.
 
 ![Final code entry](docs/final-code.png)
@@ -50,10 +50,12 @@ Rules are dealt like a **deck of cards**: each of the 8 rules is used once befor
 | `auditsPerRound` | `4` | Audit digits per leg. Code length = rounds × (audits + 1). |
 | `fixedCode` | `null` | `null` = new random code every run. Or set a fixed code of the right length, e.g. `"4719238065"`. |
 | `mazeWidth` / `mazeHeight` | `31` / `19` | Maze size in cells. |
+| `mazeGrowthPerLeg` | `0.15` | Each later leg's maze is this much bigger in both directions. `0` = same size. |
 | `mazeBranching` | `0.6` | 0 to 1. Higher means more junctions and dead ends. |
 | `auditGapSeconds` | `[8, 16]` | Seconds of maze time between popups, drawn at random from this range each time. |
 | `rushGapSeconds` | `[0.3, 0.3]` | Once a player reaches the exit early, the remaining audits come back to back with this short pause between them. |
-| `auditExhibits` | `5` | Digits shown per audit (3 or 5; odd numbers keep "middle value" possible). |
+| `auditExhibits` | `5` | Digits shown per audit on leg 1 (3 to 9). |
+| `exhibitsPerLeg` | `1` | Extra digits per audit on each later leg (capped at 9). With an even count the "middle value" rule is skipped. |
 | `routeErrorLimit` | `10` | Route errors before the maze scrambles. `0` turns route penalties off. |
 | `penalizeWallHits` | `true` | Wall hits count as route errors. |
 | `penalizeBacktracking` | `true` | Doubling back counts as a route error. |
@@ -136,6 +138,7 @@ To build locally (needs Node.js): `npm install`, then `npm run dist:win` (on Win
 
 ## Changelog
 
+- **v1.0.7** Each leg is harder: the maze grows 15% per leg and audits show one more exhibit per leg (5, 6, 7), both adjustable in setup. Esc pauses the game: the maze is hidden and the audit clock, case timer and leg times stop.
 - **v1.0.6** Code review. Fixed: the case timer on the side panel stayed at 00:00, and the audit countdown bar could stop drawing (both used the same internal name, so each overwrote the other). The setup panel now pauses the case timer and leg times too. Cleanup: one audit record feeds the stats and charts (removed duplicate counters), the fixed-code check lives in one place, unused sounds removed, and duplicate style rules merged. Case Closed shows "audits correct: X of Y".
 - **v1.0.5** The solve-time-per-leg chart is now a line chart.
 - **v1.0.4** Reaching the exit before a leg's audits are done now brings the remaining audits back to back (0.3 s apart) instead of every 1 to 2.5 s.

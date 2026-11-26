@@ -313,3 +313,18 @@ test("charts cope with no data", () => {
   assert.ok(CHARTS.auditChart([], { limitSec: 0 }).startsWith("<svg"));
   assert.ok(CHARTS.legChart([0], [0]).startsWith("<svg"));
 });
+
+test("audits work with 6, 7 and 9 exhibits (later legs); middle value is skipped when the count is even", () => {
+  for (const n of [6, 7, 9]) {
+    const gen = AUDIT.create(seeded(900 + n));
+    const used = new Set();
+    for (let i = 0; i < 300; i++) {
+      const a = gen.make(null, n);
+      assert.equal(a.digits.length, n);
+      assert.equal(reference(a.criterion.id, a.digits), a.answer, `${a.criterion.id} on [${a.digits}]`);
+      used.add(a.criterion.id);
+    }
+    assert.equal(used.has("middle"), n % 2 === 1, `middle value ${n % 2 ? "used" : "skipped"} with ${n} exhibits`);
+    assert.equal(used.size, n % 2 ? 8 : 7, `all other rules used with ${n} exhibits`);
+  }
+});

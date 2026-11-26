@@ -39,6 +39,9 @@
             <div class="vignette"></div>
             <div id="freeze-stamp" class="freeze-stamp hidden">TRACE FROZEN</div>
             <div id="crt-toast" class="crt-toast hidden"></div>
+            <div id="paused" class="paused-overlay hidden" role="dialog" aria-label="Paused">
+              <div class="paused-box"><div class="paused-title">PAUSED</div><div>Press <kbd>Esc</kbd> or click to resume</div></div>
+            </div>
 
             <!-- INTRO -->
             <div id="intro" class="overlay screen-overlay">
@@ -52,6 +55,7 @@
                 <div class="term-controls">
                   <span><kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move</span>
                   <span><kbd>0</kbd>&ndash;<kbd>9</kbd> (top row or numpad) or click the keypad to answer</span>
+                  <span><kbd>Esc</kbd> pause</span>
                 </div>
                 <button id="btn-begin" class="key big orange">BEGIN TRACE</button>
               </div>

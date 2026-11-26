@@ -516,3 +516,16 @@ textarea.set-input { width: 100%; resize: vertical; font-size: 12px; }
 .chart .ch-dot { fill: #7dffa0; stroke: #06120b; stroke-width: 2; }
 .chart .ch-hit { fill: transparent; }
 .chart .ch-pt:hover .ch-dot { r: 6; }
+
+/* ---------- PAUSE ---------- */
+.paused-overlay { position: absolute; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center;
+  background: rgba(2, 8, 4, 0.92); backdrop-filter: blur(10px); cursor: pointer; }
+.paused-box { text-align: center; font-family: var(--mono); color: var(--phosphor); text-shadow: 0 0 6px rgba(125, 255, 160, 0.6); letter-spacing: 2px; }
+.paused-title { font-family: var(--label); font-weight: 800; font-size: 46px; letter-spacing: 12px; color: var(--amber); margin-bottom: 8px; animation: blink 1.2s steps(2, start) infinite; }
+
+/* ---------- 7-9 EXHIBITS ---------- */
+.exhibits.lots { gap: 5px; }
+.exhibits.lots .exhibit { padding: 5px 3px 7px; }
+.exhibits.lots .exhibit::before { display: none; }
+.exhibits.lots .exhibit .tag { font-size: 8.5px; letter-spacing: 1px; }
+.exhibits.lots .exhibit .digit { font-size: 40px; }

@@ -143,7 +143,8 @@ async function answerCorrectly() {
   ruleCounts[s.rule] = (ruleCounts[s.rule] || 0) + 1;
   ruleSequence.push(s.rule);
   check(typeof ans === "number", `rule "${s.rule}" on [${s.digits}] has a single answer (got ${ans})`);
-  check(s.digits.length === 5, `audit shows 5 exhibits (got ${s.digits.length})`);
+  const wantN = await js(`(() => { const c = window.GETAWAY_CONFIG, S = window.__GR(); return S.mode === "practice" ? c.auditExhibits : Math.min(9, c.auditExhibits + c.exhibitsPerLeg * S.round); })()`);
+  check(s.digits.length === wantN, `audit shows ${wantN} exhibits on this leg (got ${s.digits.length})`);
   const method = methods[methodIx++ % methods.length];
   const before = await js(`(() => { const S = window.__GR(); return { slot: S.auditSlot, row: S.earned[S.round].slice(), answered: S.answered[S.round] }; })()`);
   check(before.slot === before.answered % 4, `audit targets slot A0${before.answered % 4 + 1} (oldest first)`);
@@ -441,6 +442,40 @@ try {
   // each gap = the short pause after the "verified" message closes; allow for test overhead
   check(gaps.every((g) => g <= rushGap + 0.6), "audits come back to back: gaps " + gaps.map((g) => g.toFixed(2)).join(", ") + " s");
   check((await waitMode(["exit"], 3000)) === "exit", "the exit opens once the last audit is answered");
+  }
+
+  if (want(11)) {
+  console.log("11. Pause: Esc stops every clock and hides the maze; later legs get bigger");
+  await fresh();
+  await sleep(300);
+  await press("Escape", "Escape", 27);
+  await sleep(100);
+  const p1 = await js(`({ shown: !document.getElementById("paused").classList.contains("hidden"), since: window.__GR().sinceAudit, pos: JSON.stringify(window.__GR().pos), timer: document.getElementById("timer").textContent })`);
+  check(p1.shown, "Esc shows the PAUSED screen over the maze");
+  const dir = await js(`(() => { const S = window.__GR(); const c = S.maze.cells[S.pos.y][S.pos.x]; return [[1,"ArrowUp"],[2,"ArrowRight"],[4,"ArrowDown"],[8,"ArrowLeft"]].find(([b]) => !(c & b))[1]; })()`);
+  await arrow(dir);
+  await sleep(1300);
+  const p2 = await js(`({ since: window.__GR().sinceAudit, pos: JSON.stringify(window.__GR().pos), timer: document.getElementById("timer").textContent, mode: window.__GR().mode })`);
+  check(p2.since === p1.since && p2.timer === p1.timer, "the audit clock and case timer stop while paused");
+  check(p2.pos === p1.pos, "moves are ignored while paused");
+  await press("Escape", "Escape", 27);
+  await sleep(100);
+  check(await js(`document.getElementById("paused").classList.contains("hidden") && !window.__GR().paused`), "Esc again resumes");
+  await sleep(400);
+  check((await js("window.__GR().sinceAudit")) > p1.since, "the audit clock runs again after resuming");
+  // during an audit
+  await js("window.__GR().sinceAudit = 1e9");
+  await waitMode(["audit"], 3000);
+  await sleep(500);
+  await press("Escape", "Escape", 27);
+  const d1 = await js("window.__GR().auditDeadline - performance.now()");
+  await sleep(1500);
+  await press("Escape", "Escape", 27);
+  const d2 = await js("window.__GR().auditDeadline - performance.now()");
+  check(Math.abs(d1 - d2) < 400, `the audit countdown doesn't run while paused (${Math.round(d1)} ms left before, ${Math.round(d2)} ms after)`);
+  // later legs: bigger maze and more exhibits
+  const sizes = await js(`(() => { const c = window.GETAWAY_CONFIG; return [0, 1, 2].map((r) => Math.round(c.mazeWidth * Math.pow(1 + c.mazeGrowthPerLeg, r))); })()`);
+  check(sizes[1] > sizes[0] && sizes[2] > sizes[1], "each leg's maze is wider than the last: " + sizes.join(", "));
   }
 
   // The access code is not stored in this public repo: set GR_SETUP_CODE to run section 8.

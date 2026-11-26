@@ -24,6 +24,9 @@ window.GETAWAY_CONFIG = {
   mazeHeight: 25,
   // 0..1. Higher = more branches and dead ends (harder). 0 = long winding corridors.
   mazeBranching: 0.7,
+  // Each later leg's maze is this much bigger in both directions (0.15 = 15% per leg).
+  // With 31 x 25: leg 1 = 31 x 25, leg 2 = 36 x 29, leg 3 = 41 x 33. 0 = same size.
+  mazeGrowthPerLeg: 0.15,
 
   // ---- Audit popups ----
   // Seconds of maze time before each popup, drawn at random from this range
@@ -34,9 +37,11 @@ window.GETAWAY_CONFIG = {
   rushGapSeconds: [0.3, 0.3],
 
   // ---- Audit difficulty ----
-  // Number of exhibit digits shown in each audit (3 or 5 recommended; odd numbers
-  // keep the "middle value" rule possible).
+  // Exhibit digits shown in each audit on leg 1 (3 to 9).
   auditExhibits: 5,
+  // Extra exhibits on each later leg (1 = leg 1: 5, leg 2: 6, leg 3: 7). Capped at 9.
+  // With an even number of exhibits the "middle value" rule is skipped.
+  exhibitsPerLeg: 1,
 
   // ---- Route penalties ----
   // Hitting a wall (one per key press) or turning back along your route (once per

@@ -12,7 +12,13 @@
   const ROUNDS = Math.max(1, CFG.rounds | 0);
   const PER = Math.max(1, CFG.auditsPerRound | 0);
   const MAX_STRIKES = Math.max(1, CFG.maxStrikes | 0);
-  const EXHIBITS = Math.max(3, (CFG.auditExhibits | 0) || 3);
+  // Difficulty grows every leg: more exhibits per audit and a bigger maze.
+  const BASE_EXHIBITS = Math.min(9, Math.max(3, (CFG.auditExhibits | 0) || 3));
+  const exhibitsFor = (r) => Math.min(9, BASE_EXHIBITS + Math.max(0, CFG.exhibitsPerLeg | 0) * r);
+  const mazeSizeFor = (r) => {
+    const g = Math.pow(1 + Math.max(0, +CFG.mazeGrowthPerLeg || 0), r);
+    return [Math.max(4, Math.round((CFG.mazeWidth | 0) * g)), Math.max(4, Math.round((CFG.mazeHeight | 0) * g))];
+  };
   const ROUTE_LIMIT = Math.max(0, CFG.routeErrorLimit | 0);
   const AUDIT_LIMIT = Math.max(0, +CFG.auditTimeLimitSeconds || 0); // seconds, 0 = untimed
   const PRACTICE = /[?&]skippractice\b/.test(location.search) ? 0 : Math.max(0, CFG.practiceAudits | 0);
@@ -34,7 +40,7 @@
     exitHead: $("exit-head"), markLabel: $("mark-label"), exitSymbol: $("exit-symbol"),
     roundEnd: $("round-end"), roundEndText: $("round-end-text"), codeEntry: $("code-entry"),
     codeDisplay: $("code-display"), finalPad: $("final-pad"), finalFeedback: $("final-feedback"),
-    successMsg: $("success-msg"), failMsg: $("fail-msg"),
+    successMsg: $("success-msg"), failMsg: $("fail-msg"), paused: $("paused"),
     exhibits: $("exhibits"), routeMeter: $("route-meter"), routePanel: $("route-panel"),
     ready: $("ready"), clock: $("audit-timer"), clockFill: $("audit-timer-fill"), clockText: $("audit-timer-text"),
     auditTitle: $("audit-title"), failStamp: $("fail-stamp"), btnRetry: $("btn-retry")
@@ -45,12 +51,16 @@
   $("intro-stakes").textContent = stakes;
   $("ready-stakes").textContent = stakes;
   $("btn-begin").textContent = PRACTICE ? "START PRACTICE" : "BEGIN TRACE";
-  // Exhibit cards (A, B, C, ...)
-  el.exhibits.style.gridTemplateColumns = "repeat(" + EXHIBITS + ", 1fr)";
-  el.exhibits.classList.toggle("many", EXHIBITS > 3);
-  el.exhibits.innerHTML = Array.from({ length: EXHIBITS }, (_, i) =>
-    '<div class="exhibit"><div class="tag">EXHIBIT ' + String.fromCharCode(65 + i) + '</div><div class="digit" id="ex-' + i + '">0</div></div>'
-  ).join("");
+  // Exhibit cards (A, B, C, ...); rebuilt when the count changes between legs.
+  function buildExhibits(n) {
+    if (el.exhibits.children.length === n) return;
+    el.exhibits.style.gridTemplateColumns = "repeat(" + n + ", 1fr)";
+    el.exhibits.classList.toggle("many", n > 3);
+    el.exhibits.classList.toggle("lots", n > 6);
+    el.exhibits.innerHTML = Array.from({ length: n }, (_, i) =>
+      '<div class="exhibit"><div class="tag">' + (n > 6 ? "EX " : "EXHIBIT ") + String.fromCharCode(65 + i) + '</div><div class="digit" id="ex-' + i + '">0</div></div>'
+    ).join("");
+  }
   el.routePanel.classList.toggle("hidden", ROUTE_LIMIT === 0);
   $("intro-rounds").textContent = ROUNDS;
 
@@ -132,7 +142,8 @@
   }
 
   function startRoundMaze() {
-    S.maze = window.GR_MAZE.generate(Math.max(4, CFG.mazeWidth | 0), Math.max(4, CFG.mazeHeight | 0), Math.min(1, Math.max(0, +CFG.mazeBranching || 0)));
+    const [w, h] = mazeSizeFor(S.round);
+    S.maze = window.GR_MAZE.generate(w, h, Math.min(1, Math.max(0, +CFG.mazeBranching || 0)));
     S.pos = { ...S.maze.start };
     S.trail = [{ ...S.maze.start }];
     S.sinceAudit = 0;
@@ -309,7 +320,7 @@
     const idx = auditIndex(S.round, i);
     // With a random code, each audit is built first and its answer becomes that code
     // digit, so every rule is always available. With a fixed code, the audit must hit it.
-    S.audit = window.GR_AUDIT.make(FIXED_CODE ? S.code[idx] : null, EXHIBITS);
+    S.audit = window.GR_AUDIT.make(FIXED_CODE ? S.code[idx] : null, exhibitsFor(S.round));
     S.code[idx] = S.audit.answer;
     S.auditShownAt = performance.now();
     S.auditLocked = false;
@@ -332,6 +343,7 @@
   const INPUT_GRACE_MS = 400;
 
   function showAuditCard(a, timed) {
+    buildExhibits(a.digits.length);
     S.inputReadyAt = performance.now() + INPUT_GRACE_MS;
     el.exhibits.classList.remove("resolved");
     a.digits.forEach((d, k) => {
@@ -600,7 +612,8 @@
     renderRegister();
     el.status.textContent = "TRACKING";
     setLamps();
-    toast("LEG " + (S.round + 1) + " · NEW ROUTE ACQUIRED", 2200);
+    const [w, h] = mazeSizeFor(S.round);
+    toast("LEG " + (S.round + 1) + " \u00b7 BIGGER ROUTE " + w + "\u00d7" + h + " \u00b7 " + exhibitsFor(S.round) + " EXHIBITS PER AUDIT", 3000);
   }
 
   function renderEntry() {
@@ -702,6 +715,8 @@
     const digit = digitFrom(e);
     if (e.ctrlKey && e.shiftKey && (e.key === "N" || e.key === "n")) { e.preventDefault(); newCase(); return; }
     if (e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key === "Escape" && (S.paused || PAUSABLE.includes(S.mode))) { e.preventDefault(); setPaused(!S.paused, true); return; }
+    if (S.paused) { e.preventDefault(); return; }
     if (S.mode === "maze" && MOVES[e.key] && !/^Numpad/.test(e.code || "")) {
       e.preventDefault();
       move(MOVES[e.key][0], MOVES[e.key][1], e.repeat);
@@ -747,7 +762,7 @@
 
   function practiceShow() {
     const i = S.practice.index;
-    const a = practiceGen.make(null, EXHIBITS);
+    const a = practiceGen.make(null, BASE_EXHIBITS);
     S.practice.audit = a;
     S.practice.answered = false;
     S.auditLocked = false;
@@ -795,20 +810,31 @@
     if (e.target.closest("#btn-practice-next")) practiceNext();
   });
 
-  // Facilitator setup: the game pauses (maze clock and audit clock) while it is open.
-  $("btn-setup").addEventListener("click", (e) => { e.currentTarget.blur(); window.GR_SETTINGS.open(); });
-  document.addEventListener("gr-settings", (e) => {
+  // ---------- PAUSE ----------
+  // Esc (or the setup panel) pauses everything: maze clock, audit clock, case timer.
+  const PAUSABLE = ["maze", "audit", "practice", "scramble"];
+  function setPaused(on, showScreen) {
     const now = performance.now();
-    if (e.detail.open) { S.paused = true; S.pausedAt = now; return; }
-    if (!S.paused) return;
-    const away = now - S.pausedAt;
-    if (S.auditDeadline) S.auditDeadline += away;
-    S.auditShownAt += away;
-    // the case timer and leg time don't count the pause either
-    if (S.startedAt) S.startedAt += away;
-    if (S.legStartedAt) S.legStartedAt += away;
-    S.paused = false;
-  });
+    if (on && !S.paused) {
+      S.paused = true;
+      S.pausedAt = now;
+    } else if (!on && S.paused) {
+      const away = now - S.pausedAt;
+      if (S.auditDeadline) S.auditDeadline += away;
+      if (S.inputReadyAt) S.inputReadyAt += away;
+      S.auditShownAt += away;
+      if (S.startedAt) S.startedAt += away;
+      if (S.legStartedAt) S.legStartedAt += away;
+      S.paused = false;
+    }
+    el.paused.classList.toggle("hidden", !(S.paused && showScreen));
+    el.status.textContent = S.paused && showScreen ? "PAUSED" : { maze: "TRACKING", audit: "FROZEN", practice: "PRACTICE", scramble: "SIGNAL LOST" }[S.mode] || el.status.textContent;
+  }
+  el.paused.addEventListener("click", () => setPaused(false));
+
+  // Facilitator setup pauses the game while it is open.
+  $("btn-setup").addEventListener("click", (e) => { e.currentTarget.blur(); window.GR_SETTINGS.open(); });
+  document.addEventListener("gr-settings", (e) => setPaused(e.detail.open, false));
 
   $("btn-begin").addEventListener("click", startBriefing);
   $("btn-begin-real").addEventListener("click", begin);
@@ -844,7 +870,7 @@
   }, 50);
 
   function frame(now) {
-    if (S.startedAt && S.mode !== "closed") el.caseTimer.textContent = fmtTime(now - S.startedAt);
+    if (S.startedAt && S.mode !== "closed" && !S.paused) el.caseTimer.textContent = fmtTime(now - S.startedAt);
     window.GR_MAZE.draw(canvas, S.maze, {
       pos: S.pos, trail: S.trail,
       frozen: S.mode !== "maze",
