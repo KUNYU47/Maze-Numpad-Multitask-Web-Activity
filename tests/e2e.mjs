@@ -406,6 +406,39 @@ try {
   check(tried > 0, "the timing case was exercised");
   }
 
+  if (want(10)) {
+  console.log("10. Reaching the exit early: the remaining audits come back to back");
+  await fresh();
+  await js("window.__GR().nextAuditIn = 1e12"); // no audits on the way to the exit
+  // walk the shortest route to the exit without answering anything
+  for (let guard = 0; guard < 500; guard++) {
+    const st = await js(`(() => { const S = window.__GR(), m = S.maze;
+      if (S.pos.x === m.exit.x && S.pos.y === m.exit.y) return "here";
+      const dirs = [[0,-1,1,"ArrowUp"],[1,0,2,"ArrowRight"],[0,1,4,"ArrowDown"],[-1,0,8,"ArrowLeft"]];
+      const prev = {}; const q = [[m.exit.x, m.exit.y]]; prev[m.exit.x+","+m.exit.y] = true;
+      while (q.length) { const [x,y] = q.shift();
+        for (const [dx,dy,b] of dirs) { if (m.cells[y][x] & b) continue; const k=(x+dx)+","+(y+dy); if (prev[k]) continue; prev[k]=[x,y]; q.push([x+dx,y+dy]); } }
+      const nxt = prev[S.pos.x+","+S.pos.y];
+      return dirs.find(([dx,dy]) => S.pos.x+dx === nxt[0] && S.pos.y+dy === nxt[1])[3]; })()`);
+    if (st === "here") break;
+    await arrow(st);
+    await sleep(30);
+  }
+  check((await js("window.__GR().earned[0].length")) < 4 && (await js("window.__GR().rush")), "reached the sealed exit with audits still to do");
+  const rushGap = await js("window.GETAWAY_CONFIG.rushGapSeconds[1]");
+  let gaps = [];
+  for (let k = 0; k < 4 && (await js("window.__GR().mode")) !== "exit"; k++) {
+    const t0 = Date.now();
+    if ((await waitMode(["audit", "exit"], 5000)) !== "audit") break;
+    gaps.push((Date.now() - t0) / 1000);
+    await answerCorrectly();
+  }
+  check(gaps.length >= 3, "the remaining audits all appeared (" + gaps.length + ")");
+  // each gap = the short pause after the "verified" message closes; allow for test overhead
+  check(gaps.every((g) => g <= rushGap + 0.6), "audits come back to back: gaps " + gaps.map((g) => g.toFixed(2)).join(", ") + " s");
+  check((await waitMode(["exit"], 3000)) === "exit", "the exit opens once the last audit is answered");
+  }
+
   // The access code is not stored in this public repo: set GR_SETUP_CODE to run section 8.
   const setupCode = process.env.GR_SETUP_CODE;
   if (want(8) && !setupCode) console.log("8. Facilitator setup: SKIPPED (set GR_SETUP_CODE to the access code to run it)");

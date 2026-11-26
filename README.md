@@ -28,7 +28,7 @@ A full mission takes about 5 minutes.
    - **Wrong, or out of time:** each audit has a **6-second clock** (draining bar). A wrong answer or running out of time is a **strike**, then a new audit. **Three strikes restart the current leg** (new maze, that leg's register row cleared, strikes back to 0). Earlier legs' digits and marks are kept, and the case timer keeps running. Strikes count per leg.
 4. **Route errors.** Each one sets off an alarm: the screen glitches, the console shakes, the maze walls flash red and a loud static alarm sounds. Hitting a wall (once per key press, holding a key doesn't count again) or doubling back along your route (once per retreat, however many steps) is a route error, shown on the **Route Errors** meter. At 10 errors the trail is lost: the maze for that leg **scrambles** into a new one and you restart from `IN`. Audit digits you've earned are kept.
 5. Audits are **evenly paced but unpredictable**: after each audit, the next one comes after a fresh random gap of 8 to 16 seconds of maze time. There is no slow start and no build-up, yet players can never tell exactly when the next one is coming.
-6. The exit stays **sealed (LOCK)** until the leg's 4 slots have been filled once. Standing at a sealed exit makes the remaining audits come much faster.
+6. The exit stays **sealed (LOCK)** until the leg's 4 slots have been filled once. If you reach it early, the remaining audits come **back to back** (a 0.3 s pause between them) so you can finish the leg quickly.
 7. The mission has **three legs** (three mazes). At each exit the suspect leaves a **mark** (symbol), which is logged in the register.
 8. After the last leg, enter the full **15-digit case code** (one row per leg, laid out like the register): the register read left to right, top to bottom, replacing each mark with its number from the **Old Case Key**. The correct code shows **CASE CLOSED** and sends players to the **evidence desk**.
 
@@ -52,7 +52,7 @@ Rules are dealt like a **deck of cards**: each of the 8 rules is used once befor
 | `mazeWidth` / `mazeHeight` | `31` / `19` | Maze size in cells. |
 | `mazeBranching` | `0.6` | 0 to 1. Higher means more junctions and dead ends. |
 | `auditGapSeconds` | `[8, 16]` | Seconds of maze time between popups, drawn at random from this range each time. |
-| `rushGapSeconds` | `[1, 2.5]` | Gap range once a player waits at a sealed exit. |
+| `rushGapSeconds` | `[0.3, 0.3]` | Once a player reaches the exit early, the remaining audits come back to back with this short pause between them. |
 | `auditExhibits` | `5` | Digits shown per audit (3 or 5; odd numbers keep "middle value" possible). |
 | `routeErrorLimit` | `10` | Route errors before the maze scrambles. `0` turns route penalties off. |
 | `penalizeWallHits` | `true` | Wall hits count as route errors. |
@@ -136,6 +136,7 @@ To build locally (needs Node.js): `npm install`, then `npm run dist:win` (on Win
 
 ## Changelog
 
+- **v1.0.4** Reaching the exit before a leg's audits are done now brings the remaining audits back to back (0.3 s apart) instead of every 1 to 2.5 s.
 - **v1.0.3** Case Closed screen adds two charts: solve time per leg, and time per audit (every audit played, coloured and marked by outcome, with the total played). Stats now sit in a compact strip above the charts.
 - **v1.0.2** Fixed: a correct answer could be judged wrong. After a miss, the old exhibits stayed on screen until new ones swapped in, so a key typed for the old exhibits was checked against the new ones (a false strike). New exhibits now ignore input for 0.4 s, and after a miss the old exhibits are greyed out with the right one highlighted and the answer explained ("ANSWER: 0. The smallest of 6 8 4 0 3 is 0 (Exhibit D)"). Every audit verdict is logged to the console (F12). Route errors (wall hit or doubling back) now glitch the screen, shake the console, flash the maze walls red for about a second, and play a much louder static-and-alarm sound. Browser test section 9 reproduces the timing bug.
 - **v1.0.1** Runs on macOS 10.15 Catalina and newer: the app now uses Electron 32, the last version that supports Catalina (the release workflow checks the built app's minimum macOS version and that it contains both Intel and Apple silicon code). macOS build no longer uses the hardened runtime with ad-hoc signing (that combination can stop the app from opening). The release workflow now launches each built app on Windows and macOS and checks the game starts before publishing.

@@ -7,7 +7,7 @@
     CFG.mazeWidth = 9;
     CFG.mazeHeight = 6;
     CFG.auditGapSeconds = [1.5, 3];
-    CFG.rushGapSeconds = [0.5, 1];
+    CFG.rushGapSeconds = [0.3, 0.3];
   }
   const ROUNDS = Math.max(1, CFG.rounds | 0);
   const PER = Math.max(1, CFG.auditsPerRound | 0);
@@ -553,7 +553,7 @@
     if (atExit()) {
       if (!roundDone()) {
         const left = PER - S.earned[S.round].length;
-        toast("EXIT SEALED · " + left + " AUDIT" + (left === 1 ? "" : "S") + " OUTSTANDING", 2600);
+        toast("EXIT SEALED · " + left + " AUDIT" + (left === 1 ? "" : "S") + " LEFT · BACK TO BACK", 2600);
         window.GR_SOUND.sealed();
         if (!S.rush) {
           S.rush = true;

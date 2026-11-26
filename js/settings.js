@@ -35,7 +35,7 @@
     { key: "penalizeBacktracking", label: "Doubling back counts as a route error", type: "bool" },
     { group: "Audits" },
     { key: "auditGapSeconds", label: "Seconds between popups (min / max)", type: "range", min: 1, max: 120, step: 0.5 },
-    { key: "rushGapSeconds", label: "Seconds between popups at a sealed exit (min / max)", type: "range", min: 0.5, max: 30, step: 0.5 },
+    { key: "rushGapSeconds", label: "Pause between back-to-back audits at a sealed exit (min / max)", type: "range", min: 0, max: 30, step: 0.1 },
     { key: "auditTimeLimitSeconds", label: "Seconds to answer each audit (0 = no clock)", type: "num", min: 0, max: 60, step: 0.5 },
     { key: "auditExhibits", label: "Exhibit digits per audit", type: "select", options: [3, 5, 7] },
     { key: "practiceAudits", label: "Practice audits before the start (0 = none)", type: "int", min: 0, max: 10 },

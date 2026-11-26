@@ -29,8 +29,9 @@ window.GETAWAY_CONFIG = {
   // Seconds of maze time before each popup, drawn at random from this range
   // every time, so popups are unpredictable but evenly spread across the run.
   auditGapSeconds: [8, 16],
-  // Gap used once the player reaches the exit before the leg's audits are done.
-  rushGapSeconds: [1, 2.5],
+  // Once the player reaches the exit before the leg's audits are done, the remaining
+  // audits come back to back: this is the short pause between them.
+  rushGapSeconds: [0.3, 0.3],
 
   // ---- Audit difficulty ----
   // Number of exhibit digits shown in each audit (3 or 5 recommended; odd numbers
