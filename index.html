@@ -129,6 +129,7 @@
               <div class="term closed-term">
                 <div class="stamp">CASE CLOSED</div>
                 <p id="success-msg" class="success-msg"></p>
+                <div class="closed-grid">
                 <table class="stats">
                   <tr><td>CASE TIME</td><td id="st-time">--</td></tr>
                   <tr><td>AUDITS CLEARED</td><td id="st-audits">--</td></tr>
@@ -137,6 +138,22 @@
                   <tr><td>CODE ATTEMPTS</td><td id="st-attempts">--</td></tr>
                   <tr><td>ROUTE ERRORS</td><td id="st-route">--</td></tr>
                 </table>
+                <div class="charts">
+                  <figure class="chart-box">
+                    <figcaption>SOLVE TIME PER LEG</figcaption>
+                    <div id="chart-legs"></div>
+                  </figure>
+                  <figure class="chart-box">
+                    <figcaption>TIME PER AUDIT <span id="chart-audit-count" class="chart-count"></span></figcaption>
+                    <div id="chart-audits"></div>
+                    <div class="chart-legend">
+                      <span><i class="sw correct"></i>correct</span>
+                      <span><i class="sw wrong"></i>&#10005; wrong</span>
+                      <span><i class="sw timeout"></i>&#9719; timed out</span>
+                    </div>
+                  </figure>
+                </div>
+                </div>
                 <button id="btn-again" class="key orange">OPEN NEW CASE</button>
               </div>
             </div>
@@ -196,6 +213,7 @@
   <script src="js/maze.js"></script>
   <script src="js/audit.js"></script>
   <script src="js/route.js"></script>
+  <script src="js/charts.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

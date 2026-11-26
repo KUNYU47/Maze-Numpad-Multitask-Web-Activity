@@ -278,3 +278,36 @@ test("practice explanations name the right answer and exhibit for every rule", (
     assert.ok(text.includes("Exhibit " + letter), `${a.criterion.id}: names Exhibit ${letter}: ${text}`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Case Closed charts
+// ---------------------------------------------------------------------------
+const CHARTS = require("../js/charts.js");
+
+test("leg chart draws one bar per leg with its time", () => {
+  const svg = CHARTS.legChart([95000, 62000, 130500], [0, 1, 0]);
+  assert.equal((svg.match(/class="ch-leg"/g) || []).length, 3);
+  for (const t of ["1:35", "1:02", "2:10"]) assert.ok(svg.includes(t), "shows " + t);
+  assert.ok(svg.includes("1 restart"), "notes leg restarts");
+});
+
+test("audit chart draws every audit, marks misses and timeouts, and counts them", () => {
+  const audits = [
+    { leg: 1, ms: 2300, verdict: "correct" }, { leg: 1, ms: 4100, verdict: "wrong" },
+    { leg: 1, ms: 6000, verdict: "timeout" }, { leg: 2, ms: 1800, verdict: "correct" }
+  ];
+  const svg = CHARTS.auditChart(audits, { limitSec: 6 });
+  assert.equal((svg.match(/class="ch-audit /g) || []).length, 4);
+  assert.equal((svg.match(/ch-audit correct/g) || []).length, 2);
+  assert.ok(svg.includes("ch-mark wrong") && svg.includes("ch-mark timeout"), "wrong and timed-out audits get a symbol, not only a colour");
+  assert.ok(svg.includes("6 s limit"), "shows the time limit");
+  assert.ok(svg.includes(">L2<"), "marks where leg 2 starts");
+  const sum = CHARTS.auditSummary(audits);
+  assert.deepEqual([sum.total, sum.correct, sum.wrong, sum.timeout], [4, 2, 1, 1]);
+  assert.equal(Math.round(sum.meanCorrectMs), 2050);
+});
+
+test("charts cope with no data", () => {
+  assert.ok(CHARTS.auditChart([], { limitSec: 0 }).startsWith("<svg"));
+  assert.ok(CHARTS.legChart([0], [0]).startsWith("<svg"));
+});

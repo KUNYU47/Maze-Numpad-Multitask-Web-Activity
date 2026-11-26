@@ -72,6 +72,10 @@ Rules are dealt like a **deck of cards**: each of the 8 rules is used once befor
 
 **Skip practice** (for a group that has already practised): open `index.html?skippractice`.
 
+**Charts:** the Case Closed screen has two charts. **Solve time per leg** shows how long each leg took from its start to its exit (including any restarts, marked ↻). **Time per audit** shows every audit played, in order, split by leg: green = correct, red with ✕ = wrong, amber with ◷ = timed out, with the time limit as a dashed line and a count of audits played, right, wrong and timed out. Hover a bar for its exact time.
+
+![Case Closed with charts](docs/case-closed.png)
+
 **Data:** the Case Closed screen shows total time, audits cleared, strikes, mean audit response time, code attempts, and route errors (wall hits, doublings back, scrambles). The same numbers (including every audit response time in ms and the code) are logged to the browser console (F12), which is handy for talking about switch costs in the debrief.
 
 ## How it links to the course (task switching)
@@ -98,6 +102,7 @@ js/app.js                Game flow: maze, audits, exit, final code
 js/maze.js               Maze generation (growing tree, far exit) and CRT rendering
 js/audit.js              Audit question generator
 js/route.js              Route-error tracker (wall hits, doubling back)
+js/charts.js             SVG charts for the Case Closed screen
 js/symbols.js            SVG glyphs for the Old Case Key
 js/sound.js              Synthesized sound effects (Web Audio)
 js/settings.js           Facilitator setup panel (gear button, saved per computer)
@@ -131,6 +136,7 @@ To build locally (needs Node.js): `npm install`, then `npm run dist:win` (on Win
 
 ## Changelog
 
+- **v1.0.3** Case Closed screen adds two charts: solve time per leg, and time per audit (every audit played, coloured and marked by outcome, with the total played). Stats now sit in a compact strip above the charts.
 - **v1.0.2** Fixed: a correct answer could be judged wrong. After a miss, the old exhibits stayed on screen until new ones swapped in, so a key typed for the old exhibits was checked against the new ones (a false strike). New exhibits now ignore input for 0.4 s, and after a miss the old exhibits are greyed out with the right one highlighted and the answer explained ("ANSWER: 0. The smallest of 6 8 4 0 3 is 0 (Exhibit D)"). Every audit verdict is logged to the console (F12). Route errors (wall hit or doubling back) now glitch the screen, shake the console, flash the maze walls red for about a second, and play a much louder static-and-alarm sound. Browser test section 9 reproduces the timing bug.
 - **v1.0.1** Runs on macOS 10.15 Catalina and newer: the app now uses Electron 32, the last version that supports Catalina (the release workflow checks the built app's minimum macOS version and that it contains both Intel and Apple silicon code). macOS build no longer uses the hardened runtime with ad-hoc signing (that combination can stop the app from opening). The release workflow now launches each built app on Windows and macOS and checks the game starts before publishing.
 - **v1.0.0** First release: single-file Windows app and macOS app (no install needed), built and published by GitHub Actions. Facilitator setup panel behind the gear button (access code) with every setting, saved per computer; the game pauses while it's open. Full test run: 20 unit tests and 404 browser checks pass.

@@ -109,6 +109,9 @@
       startedAt: null, endedAt: null,
       audit: null, auditShownAt: 0, auditLocked: false, auditCount: 0,
       stats: { rts: [], attempts: 0, wallHits: 0, backtracks: 0, rescrambles: 0, strikes: 0, timeouts: 0, legRestarts: 0 },
+      // For the Case Closed charts: time per leg (start to exit, including restarts)
+      // and every audit played (practice not included).
+      legStartedAt: null, legMs: [], legRestarts: Array(ROUNDS).fill(0), auditLog: [],
       practice: { index: 0, audit: null, answered: false },
       auditDeadline: null,
       route: window.GR_ROUTE.createTracker({
@@ -280,6 +283,7 @@
     S.auditDeadline = null;
     S.mode = "maze";
     S.startedAt = performance.now();
+    S.legStartedAt = S.startedAt;
     showOnly(null);
     el.status.textContent = "TRACKING";
     setLamps();
@@ -378,6 +382,7 @@
   // Every audit verdict is logged to the console (F12) to help check reports.
   function logAudit(verdict, pressed) {
     const a = S.audit;
+    S.auditLog.push({ leg: S.round + 1, ms: performance.now() - S.auditShownAt, verdict });
     console.log("[GetawayRoute] audit", verdict, { rule: a.criterion.id, exhibits: a.digits.join(""), answer: a.answer, pressed, ms: Math.round(performance.now() - S.auditShownAt) });
   }
 
@@ -464,6 +469,7 @@
   function restartLeg() {
     if (S.mode !== "failed") return;
     S.stats.legRestarts++;
+    S.legRestarts[S.round]++;
     S.earned[S.round] = [];
     S.answered[S.round] = 0;
     S.strikes = 0;
@@ -562,6 +568,7 @@
 
   function reachExit() {
     S.mode = "exit";
+    S.legMs[S.round] = performance.now() - S.legStartedAt;
     S.revealed[S.round] = true;
     renderRegister();
     const last = S.round === ROUNDS - 1;
@@ -587,6 +594,7 @@
   function nextRound() {
     if (S.mode !== "exit" || S.round >= ROUNDS - 1) return;
     S.round++;
+    S.legStartedAt = performance.now();
     S.strikes = 0; // strikes count per leg
     renderStrikes();
     window.GR_SOUND.play();
@@ -647,6 +655,14 @@
     setTimeout(renderEntry, 500);
   }
 
+  function renderCharts() {
+    const C = window.GR_CHARTS;
+    $("chart-legs").innerHTML = C.legChart(S.legMs, S.legRestarts, { width: 380, height: 128 });
+    $("chart-audits").innerHTML = C.auditChart(S.auditLog, { width: 380, height: 128, limitSec: AUDIT_LIMIT });
+    const sum = C.auditSummary(S.auditLog);
+    $("chart-audit-count").textContent = "\u00b7 " + sum.total + " PLAYED \u00b7 " + sum.correct + " RIGHT \u00b7 " + sum.wrong + " WRONG \u00b7 " + sum.timeout + " TIMED OUT";
+  }
+
   function closeCase() {
     S.mode = "closed";
     S.endedAt = performance.now();
@@ -658,6 +674,7 @@
     $("st-attempts").textContent = S.stats.attempts;
     $("st-route").textContent = S.stats.wallHits + " wall \u00b7 " + S.stats.backtracks + " back \u00b7 " + S.stats.rescrambles + " scrambles";
     el.successMsg.textContent = CFG.successMessage || "";
+    renderCharts();
     renderRegister();
     showOnly("closed");
     el.status.textContent = "CASE CLOSED";
