@@ -222,8 +222,8 @@ try {
   await press("Enter", "NumpadEnter", 13, "\r");
   await sleep(500);
   check((await js("window.__GR().mode")) === "closed", "correct final code closes the case");
-  const charts = await js(`({ legs: document.querySelectorAll("#chart-legs .ch-leg").length, audits: document.querySelectorAll("#chart-audits .ch-audit").length, logged: window.__GR().auditLog.length, count: document.getElementById("chart-audit-count").textContent })`);
-  check(charts.legs === legs, `Case Closed shows one bar per leg (${charts.legs})`);
+  const charts = await js(`({ legs: document.querySelectorAll("#chart-legs .ch-dot").length, audits: document.querySelectorAll("#chart-audits .ch-audit").length, logged: window.__GR().auditLog.length, count: document.getElementById("chart-audit-count").textContent })`);
+  check(charts.legs === legs, `Case Closed shows one point per leg (${charts.legs})`);
   check(charts.audits === charts.logged && charts.audits > 0 && charts.count.includes(charts.logged + " PLAYED"), `Case Closed shows every audit played: ${JSON.stringify(charts)}`);
   }
 

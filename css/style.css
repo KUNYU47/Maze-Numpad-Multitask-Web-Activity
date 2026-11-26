@@ -536,3 +536,9 @@ textarea.set-input { width: 100%; resize: vertical; font-size: 12px; }
 .closed-grid .stats tr { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dotted var(--phosphor-dim); }
 .closed-grid .stats td { border: 0; padding: 2px 0; white-space: nowrap; font-size: 11px; }
 .closed-term .key { margin-top: 2px; }
+
+/* Leg chart: line with point markers */
+.chart .ch-line { fill: none; stroke: #7dffa0; stroke-width: 2; stroke-linejoin: round; }
+.chart .ch-dot { fill: #7dffa0; stroke: #06120b; stroke-width: 2; }
+.chart .ch-hit { fill: transparent; }
+.chart .ch-pt:hover .ch-dot { r: 6; }

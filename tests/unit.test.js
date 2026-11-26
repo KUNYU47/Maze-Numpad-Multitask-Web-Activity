@@ -284,9 +284,11 @@ test("practice explanations name the right answer and exhibit for every rule", (
 // ---------------------------------------------------------------------------
 const CHARTS = require("../js/charts.js");
 
-test("leg chart draws one bar per leg with its time", () => {
+test("leg chart is a line with one point per leg and its time", () => {
   const svg = CHARTS.legChart([95000, 62000, 130500], [0, 1, 0]);
-  assert.equal((svg.match(/class="ch-leg"/g) || []).length, 3);
+  assert.equal((svg.match(/class="ch-dot"/g) || []).length, 3);
+  assert.equal((svg.match(/<polyline class="ch-line" points="[^"]+"/g) || []).length, 1, "one connecting line");
+  assert.equal(svg.match(/points="([^"]+)"/)[1].trim().split(" ").length, 3, "the line passes through every leg");
   for (const t of ["1:35", "1:02", "2:10"]) assert.ok(svg.includes(t), "shows " + t);
   assert.ok(svg.includes("1 restart"), "notes leg restarts");
 });

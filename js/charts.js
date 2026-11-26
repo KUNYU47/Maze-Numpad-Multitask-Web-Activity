@@ -36,24 +36,26 @@
     return g;
   }
 
-  // Chart 1: time to solve each leg (ms). restarts[i] = how often leg i was restarted.
+  // Chart 1: time to solve each leg (ms), as a line. restarts[i] = how often leg i was restarted.
   function legChart(legMs, restarts, opts) {
     const o = Object.assign({ width: 300, height: 150 }, opts || {});
-    const W = o.width, H = o.height, pad = { t: 18, r: 8, b: 22, l: 40 };
+    const W = o.width, H = o.height, pad = { t: 20, r: 18, b: 22, l: 40 };
     const t = ticks(Math.max(...legMs, 1) / 1000);
     const n = Math.max(legMs.length, 1);
-    const slot = (W - pad.l - pad.r) / n;
-    const bw = Math.min(46, slot * 0.6);
+    const xOf = (i) => (n === 1 ? (pad.l + W - pad.r) / 2 : pad.l + 14 + ((W - pad.l - pad.r - 28) * i) / (n - 1));
+    const yOf = (ms) => pad.t + (H - pad.t - pad.b) * (1 - ms / 1000 / t.top);
     let svg = frame(W, H, pad, t, (v) => fmtClock(v * 1000));
-    legMs.forEach((ms, i) => {
-      const h = (H - pad.t - pad.b) * (ms / 1000 / t.top);
-      const x = pad.l + slot * i + (slot - bw) / 2, y = H - pad.b - h;
-      const rs = (restarts && restarts[i]) || 0;
-      svg += bar(x, y, bw, h, "ch-leg", "Leg " + (i + 1) + ": " + fmtClock(ms) + (rs ? " (" + rs + " restart" + (rs > 1 ? "s" : "") + ")" : ""));
-      svg += '<text class="ch-val" x="' + (x + bw / 2) + '" y="' + (y - 5) + '" text-anchor="middle">' + fmtClock(ms) + (rs ? " ↻" + rs : "") + "</text>";
-      svg += '<text class="ch-axis" x="' + (x + bw / 2) + '" y="' + (H - 7) + '" text-anchor="middle">L' + (i + 1) + "</text>";
-    });
     svg += '<line class="ch-base" x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + (H - pad.b) + '" y2="' + (H - pad.b) + '"/>';
+    const pts = legMs.map((ms, i) => [xOf(i), yOf(ms)]);
+    if (pts.length > 1) svg += '<polyline class="ch-line" points="' + pts.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ") + '"/>';
+    legMs.forEach((ms, i) => {
+      const [x, y] = pts[i];
+      const rs = (restarts && restarts[i]) || 0;
+      const title = "Leg " + (i + 1) + ": " + fmtClock(ms) + (rs ? " (" + rs + " restart" + (rs > 1 ? "s" : "") + ")" : "");
+      svg += '<g class="ch-pt"><circle class="ch-hit" cx="' + x + '" cy="' + y + '" r="12"/><circle class="ch-dot" cx="' + x + '" cy="' + y + '" r="4.5"/><title>' + esc(title) + "</title></g>";
+      svg += '<text class="ch-val" x="' + x + '" y="' + (y - 9) + '" text-anchor="middle">' + fmtClock(ms) + (rs ? " ↻" + rs : "") + "</text>";
+      svg += '<text class="ch-axis" x="' + x + '" y="' + (H - 7) + '" text-anchor="middle">L' + (i + 1) + "</text>";
+    });
     return '<svg class="chart" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Solve time per leg">' + svg + "</svg>";
   }
 

@@ -1,7 +1,7 @@
 {
   "name": "getaway-route",
   "productName": "The Getaway Route",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "PSY475 escape-room puzzle: The Getaway Route (task-switching maze)",
   "main": "electron/main.js",
