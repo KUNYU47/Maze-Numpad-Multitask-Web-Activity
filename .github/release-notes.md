@@ -9,6 +9,15 @@
 
 Press **F11** in the app for full screen.
 
+## What's new since v1.0.1
+
+- **Fixed:** a correct answer could be judged wrong when new exhibits appeared just as it was typed. After a miss, the right exhibit is now highlighted and the answer explained.
+- **Each leg is harder:** a bigger maze and one more exhibit per audit every leg.
+- **Route-error alarm:** wall hits and doubling back glitch the screen, shake the console, flash the walls red and sound a loud alarm.
+- **Back-to-back audits** once you reach the exit early.
+- **Charts** on the Case Closed screen: solve time per leg (line) and time per audit (with total played).
+- **Esc pauses** the game; the case timer and audit countdown bar now display correctly.
+
 ## For facilitators
 
 - Click the **gear** button (bottom right) and enter the access code to change any setting: legs, maze size, audit timing and clock, strikes, practice audits, the Old Case Key, and the Case Closed clue. Settings are saved on that computer.

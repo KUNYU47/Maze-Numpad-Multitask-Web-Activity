@@ -23,7 +23,7 @@ window.GETAWAY_CONFIG = {
   mazeWidth: 31,
   mazeHeight: 25,
   // 0..1. Higher = more branches and dead ends (harder). 0 = long winding corridors.
-  mazeBranching: 0.7,
+  mazeBranching: 0.8,
   // Each later leg's maze is this much bigger in both directions (0.15 = 15% per leg).
   // With 31 x 25: leg 1 = 31 x 25, leg 2 = 36 x 29, leg 3 = 41 x 33. 0 = same size.
   mazeGrowthPerLeg: 0.15,

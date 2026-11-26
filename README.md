@@ -51,7 +51,7 @@ Rules are dealt like a **deck of cards**: each of the 8 rules is used once befor
 | `fixedCode` | `null` | `null` = new random code every run. Or set a fixed code of the right length, e.g. `"4719238065"`. |
 | `mazeWidth` / `mazeHeight` | `31` / `19` | Maze size in cells. |
 | `mazeGrowthPerLeg` | `0.15` | Each later leg's maze is this much bigger in both directions. `0` = same size. |
-| `mazeBranching` | `0.6` | 0 to 1. Higher means more junctions and dead ends. |
+| `mazeBranching` | `0.8` | 0 to 1. Higher means more junctions and dead ends. |
 | `auditGapSeconds` | `[8, 16]` | Seconds of maze time between popups, drawn at random from this range each time. |
 | `rushGapSeconds` | `[0.3, 0.3]` | Once a player reaches the exit early, the remaining audits come back to back with this short pause between them. |
 | `auditExhibits` | `5` | Digits shown per audit on leg 1 (3 to 9). |
@@ -138,6 +138,7 @@ To build locally (needs Node.js): `npm install`, then `npm run dist:win` (on Win
 
 ## Changelog
 
+- **v1.1.0** Release of everything since v1.0.1, plus: maze branching raised to 0.8 (more dead ends), and the case timer is driven by the game clock so it never stalls.
 - **v1.0.7** Each leg is harder: the maze grows 15% per leg and audits show one more exhibit per leg (5, 6, 7), both adjustable in setup. Esc pauses the game: the maze is hidden and the audit clock, case timer and leg times stop.
 - **v1.0.6** Code review. Fixed: the case timer on the side panel stayed at 00:00, and the audit countdown bar could stop drawing (both used the same internal name, so each overwrote the other). The setup panel now pauses the case timer and leg times too. Cleanup: one audit record feeds the stats and charts (removed duplicate counters), the fixed-code check lives in one place, unused sounds removed, and duplicate style rules merged. Case Closed shows "audits correct: X of Y".
 - **v1.0.5** The solve-time-per-leg chart is now a line chart.

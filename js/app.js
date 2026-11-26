@@ -865,12 +865,12 @@
     const dt = Math.min(1000, now - last);
     last = now;
     if (S.paused) return;
+    if (S.startedAt && S.mode !== "closed") el.caseTimer.textContent = fmtTime(now - S.startedAt);
     if (S.mode === "maze") auditTick(dt);
     clockTick(now);
   }, 50);
 
   function frame(now) {
-    if (S.startedAt && S.mode !== "closed" && !S.paused) el.caseTimer.textContent = fmtTime(now - S.startedAt);
     window.GR_MAZE.draw(canvas, S.maze, {
       pos: S.pos, trail: S.trail,
       frozen: S.mode !== "maze",
